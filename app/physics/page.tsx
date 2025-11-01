@@ -22,6 +22,30 @@ export default function PhysicsPage() {
       route: "/physics/motion",
     },
     {
+      titleEn: "Gravity",
+      titleBn: "মহাকর্ষ",
+      descEn: "Explore gravitational forces and fields",
+      descBn: "মহাকর্ষীয় বল এবং ক্ষেত্র অন্বেষণ",
+      icon: "🌍",
+      route: "/physics/gravity",
+    },
+    {
+      titleEn: "Solar System",
+      titleBn: "সৌরজগৎ",
+      descEn: "Interactive 3D solar system model",
+      descBn: "ইন্টারেক্টিভ ত্রিমাত্রিক সৌরজগৎ মডেল",
+      icon: "🌠",
+      route: "/physics/solar",
+    },
+    {
+      titleEn: "Geometric Optics",
+      titleBn: "জ্যামিতিক আলোকবিজ্ঞান",
+      descEn: "Ray diagrams and optical systems",
+      descBn: "রশ্মি রেখাচিত্র এবং আলোক ব্যবস্থা",
+      icon: "🔭",
+      route: "/physics/optics",
+    },
+    {
       titleEn: "Thermodynamics",
       titleBn: "তাপগতিবিদ্যা",
       descEn: "Heat, temperature, and energy transfer",
@@ -56,7 +80,7 @@ export default function PhysicsPage() {
       
       <main>
         {/* Hero Section */}
-        <section className="relative pt-24 pb-16 px-4 bg-gradient-to-br from-blue-50 via-cyan-50/50 to-indigo-50/30">
+        <section className="relative pt-24 pb-16 px-4 bg-linear-to-br from-blue-50 via-cyan-50/50 to-indigo-50/30">
           <div className="max-w-7xl mx-auto">
             <button
               onClick={() => router.push("/")}
@@ -67,11 +91,11 @@ export default function PhysicsPage() {
             </button>
 
             <div className="flex items-center gap-6 mb-8">
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-lg">
+              <div className="w-20 h-20 rounded-2xl bg-linear-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-lg">
                 <Atom className="w-12 h-12 text-white" strokeWidth={1.5} />
               </div>
               <div>
-                <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent mb-2">
+                <h1 className="text-5xl md:text-6xl font-bold bg-linear-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent mb-2">
                   {language === "en" ? "Physics" : "পদার্থবিদ্যা"}
                 </h1>
                 <p className="text-lg text-slate-600">

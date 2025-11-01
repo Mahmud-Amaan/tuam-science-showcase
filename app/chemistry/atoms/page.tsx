@@ -4,11 +4,11 @@ export default function AtomsPage() {
   return (
     <div className="h-screen w-full">
       <iframe 
-        src="https://sketchfab.com/models/6a283d5b19c34e2b8fcfc6907b231aea/embed"
-        title="Atom Structure on Sketchfab"
+        src="https://phet.colorado.edu/sims/html/build-an-atom/latest/build-an-atom_all.html"
+        title="PhET Build-an-Atom Interactive Simulation"
         className="w-full h-full border-none"
         allowFullScreen
-        allow="autoplay; fullscreen; xr-spatial-tracking"
+        allow="fullscreen"
       />
     </div>
   )

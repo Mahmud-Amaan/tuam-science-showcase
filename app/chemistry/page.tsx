@@ -22,6 +22,22 @@ export default function ChemistryPage() {
       href: "/chemistry/atoms",
     },
     {
+      titleEn: "States of Matter",
+      titleBn: "পদার্থের অবস্থা",
+      descEn: "Interactive simulation exploring solids, liquids, and gases",
+      descBn: "ঘন, তরল, এবং গ্যাসীয় অবস্থা অন্বেষণ",
+      icon: "🧊",
+      href: "/chemistry/states",
+    },
+    {
+      titleEn: "Molecules",
+      titleBn: "আণু",
+      descEn: "Explore molecular shapes and VSEPR geometry",
+      descBn: "আণুগত আকৃতি এবং VSEPR জ্যামিতি অন্বেষণ",
+      icon: "🔬",
+      href: "/chemistry/molecules",
+    },
+    {
       titleEn: "Organic Chemistry",
       titleBn: "জৈব রসায়ন",
       descEn: "Carbon compounds and organic reactions",

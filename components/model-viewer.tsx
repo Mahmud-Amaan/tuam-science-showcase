@@ -9,7 +9,7 @@ interface ModelViewerProps {
   title: string
 }
 
-function ModelViewer({ src, title }: ModelViewerProps) {
+export default function ModelViewer({ src, title }: ModelViewerProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
   const router = useRouter()

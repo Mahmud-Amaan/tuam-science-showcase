@@ -885,10 +885,7 @@ export default function SimulationCanvas({ simulation, language }: SimulationPro
         <div className="absolute bottom-3 left-3 sm:bottom-6 sm:left-6 bg-gradient-to-r from-slate-800 to-slate-900 text-white px-3 py-2 sm:px-4 sm:py-3 rounded-xl text-xs font-mono shadow-lg border border-slate-700 backdrop-blur-sm">
           <div className="flex gap-2 flex-wrap">
             <span>🔍 {zoom.toFixed(1)}x</span>
-            <span className="hidden sm:inline">•</span>
             <span className="hidden sm:inline">Scroll zoom</span>
-            <span className="hidden sm:inline">•</span>
-            <span className="hidden sm:inline">Ctrl+Drag pan</span>
           </div>
         </div>
 
