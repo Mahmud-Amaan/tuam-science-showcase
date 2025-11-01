@@ -1,10 +1,14 @@
 "use client"
 
+import { useRouter } from "next/navigation"
+
 interface SubjectCardsProps {
   language: "en" | "bn"
 }
 
 const SubjectCards = ({ language }: SubjectCardsProps) => {
+  const router = useRouter()
+  
   const subjects = [
     {
       icon: "🧮",
@@ -99,8 +103,18 @@ const SubjectCards = ({ language }: SubjectCardsProps) => {
                 </p>
                 <button
                   onClick={() => {
-                    // Placeholder for subject exploration functionality
-                    console.log(`Exploring ${language === "en" ? subject.titleEn : subject.titleBn}`)
+                    const routes: Record<string, string> = {
+                      "Mathematics": "/math",
+                      "গণিত": "/math",
+                      "Physics": "/physics",
+                      "পদার্থবিদ্যা": "/physics",
+                      "Chemistry": "/chemistry",
+                      "রসায়ন": "/chemistry",
+                      "Biology": "/biology",
+                      "জীববিজ্ঞান": "/biology",
+                    }
+                    const route = routes[subject.titleEn] || routes[subject.titleBn] || "/"
+                    router.push(route)
                   }}
                   className={`w-full py-3 rounded-lg ${subject.accentColor} text-white font-semibold text-sm opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-y-0 translate-y-2 hover:shadow-lg`}
                 >
