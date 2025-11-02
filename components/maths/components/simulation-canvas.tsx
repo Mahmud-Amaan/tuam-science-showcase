@@ -116,6 +116,48 @@ export default function SimulationCanvas({ simulation, language }: SimulationPro
     setTableValues(newTableValues)
   }, [simulation, parameters])
 
+  useEffect(() => {
+    // This effect re-snaps all existing points to the new grid whenever the zoom level changes.
+    const { minorGridSpacing } = getGridSpacing(zoom);
+
+    // Re-snap custom points
+    setCustomPoints(prevPoints => {
+      if (!prevPoints.length) return prevPoints;
+      const newPoints = prevPoints.map(point => ({
+        x: Math.round(point.x / minorGridSpacing) * minorGridSpacing,
+        y: Math.round(point.y / minorGridSpacing) * minorGridSpacing,
+      }));
+      if (JSON.stringify(newPoints) === JSON.stringify(prevPoints)) {
+        return prevPoints;
+      }
+      return newPoints;
+    });
+
+    // Re-snap simulation parameters
+    setParameters(prevParams => {
+        const newParams = JSON.parse(JSON.stringify(prevParams)); // Deep copy
+        const simParams = newParams[simulation as keyof typeof parameters];
+
+        if (simulation === 'gradient' || simulation === 'distance' || simulation === 'square' || simulation === 'triangle') {
+            for(let i = 1; i <= 3; i++) {
+                if(simParams[`x${i}`] !== undefined && simParams[`y${i}`] !== undefined) {
+                    simParams[`x${i}`] = Math.round(simParams[`x${i}`] / minorGridSpacing) * minorGridSpacing;
+                    simParams[`y${i}`] = Math.round(simParams[`y${i}`] / minorGridSpacing) * minorGridSpacing;
+                }
+            }
+        } else if (simulation === 'circle') {
+            (simParams as any).centerX = Math.round((simParams as any).centerX / minorGridSpacing) * minorGridSpacing;
+            (simParams as any).centerY = Math.round((simParams as any).centerY / minorGridSpacing) * minorGridSpacing;
+            (simParams as any).radius = Math.max(minorGridSpacing, Math.round((simParams as any).radius / minorGridSpacing) * minorGridSpacing);
+        }
+
+        if (JSON.stringify(newParams) === JSON.stringify(prevParams)) {
+            return prevParams;
+        }
+        return newParams;
+    });
+  }, [zoom, simulation]);
+
   const handleInputChange = (key: string, value: string) => {
     setInputValues({ ...inputValues, [key]: value })
     const numValue = Number.parseFloat(value)
@@ -233,31 +275,27 @@ export default function SimulationCanvas({ simulation, language }: SimulationPro
       const coords = pixelToCanvasCoords(pixelX, pixelY)
       const newParams = { ...parameters }
       const simParams = newParams[simulation as keyof typeof parameters] as any
-
       const pointKey = dragState.draggedPoint
-      if (
-        pointKey.startsWith("x") ||
-        pointKey.startsWith("y") ||
-        pointKey === "centerX" ||
-        pointKey === "centerY" ||
-        pointKey === "radius"
-      ) {
-        if (pointKey === "radius") {
-          // For radius, calculate distance from center
-          const p = simParams as typeof parameters.circle
-          const dist = Math.sqrt(Math.pow(coords.x - p.centerX, 2) + Math.pow(coords.y - p.centerY, 2))
-          simParams.radius = Math.max(0.1, Math.round(dist * 100) / 100)
-        } else if (pointKey === "centerX") {
-          simParams.centerX = Math.round(coords.x * 100) / 100
-        } else if (pointKey === "centerY") {
-          simParams.centerY = Math.round(coords.y * 100) / 100
-        } else {
-          simParams[pointKey] = Math.round(coords.x * 100) / 100 // For x1, x2, x3
-          if (pointKey.includes("y")) {
-            simParams[pointKey] = Math.round(coords.y * 100) / 100
-          }
+
+      const { minorGridSpacing } = getGridSpacing(zoom)
+      const snappedX = Math.round(coords.x / minorGridSpacing) * minorGridSpacing
+      const snappedY = Math.round(coords.y / minorGridSpacing) * minorGridSpacing
+
+      if (pointKey === "radius") {
+        const p = simParams as typeof parameters.circle
+        const dist = Math.sqrt(Math.pow(coords.x - p.centerX, 2) + Math.pow(coords.y - p.centerY, 2))
+        simParams.radius = Math.max(minorGridSpacing, Math.round(dist / minorGridSpacing) * minorGridSpacing)
+      } else if (pointKey === "centerX") {
+        simParams.centerX = snappedX
+        simParams.centerY = snappedY
+      } else if (pointKey.startsWith("x")) {
+        const pointIndex = pointKey.substring(1)
+        if (simParams.hasOwnProperty(`x${pointIndex}`) && simParams.hasOwnProperty(`y${pointIndex}`)) {
+          simParams[`x${pointIndex}`] = snappedX
+          simParams[`y${pointIndex}`] = snappedY
         }
       }
+
       setParameters(newParams)
       return
     }
@@ -287,6 +325,13 @@ export default function SimulationCanvas({ simulation, language }: SimulationPro
     }
   }
 
+  const getGridSpacing = (zoom: number) => {
+    const zoomLog = Math.log10(zoom)
+    const majorGridSpacing = Math.pow(10, Math.floor(1 - zoomLog))
+    const minorGridSpacing = majorGridSpacing / 5
+    return { majorGridSpacing, minorGridSpacing }
+  }
+
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!pointMode || !canvasRef.current || isPanning) return
 
@@ -294,12 +339,11 @@ export default function SimulationCanvas({ simulation, language }: SimulationPro
     const pixelX = e.clientX - rect.left
     const pixelY = e.clientY - rect.top
 
-    const centerX = canvasRef.current.width / 2
-    const centerY = canvasRef.current.height / 2
-    const scale = 40 * zoom
+    const coords = pixelToCanvasCoords(pixelX, pixelY)
+    const { minorGridSpacing } = getGridSpacing(zoom)
 
-    const x = Math.round(((pixelX - centerX - panX) / scale) * 100) / 100
-    const y = Math.round(((centerY - panY - pixelY) / scale) * 100) / 100
+    const x = Math.round(coords.x / minorGridSpacing) * minorGridSpacing
+    const y = Math.round(coords.y / minorGridSpacing) * minorGridSpacing
 
     setCustomPoints([...customPoints, { x, y }])
   }
@@ -324,10 +368,7 @@ export default function SimulationCanvas({ simulation, language }: SimulationPro
     const visibleBottom = (centerY - height) / scale
 
     // Calculate appropriate grid spacing
-    const baseSpacing = 1  // Base unit for grid spacing
-    const zoomLog = Math.log10(zoom)
-    const majorGridSpacing = Math.pow(10, Math.floor(1 - zoomLog))
-    const minorGridSpacing = majorGridSpacing / 5
+    const { majorGridSpacing, minorGridSpacing } = getGridSpacing(zoom)
 
     ctx.fillStyle = "#ffffff"
     ctx.fillRect(0, 0, width, height)
