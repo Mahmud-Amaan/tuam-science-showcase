@@ -128,8 +128,11 @@ export default function SimulationCanvas({ simulation, language }: SimulationPro
 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault()
-    const newZoom = Math.max(0.5, Math.min(5, zoom + (e.deltaY > 0 ? -0.1 : 0.1)))
-    setZoom(newZoom)
+    // Use a smaller step for smoother zooming at high zoom levels
+    const zoomStep = zoom * 0.1
+    const newZoom = zoom + (e.deltaY > 0 ? -zoomStep : zoomStep)
+    // Ensure zoom doesn't go below a tiny positive number to prevent division by zero
+    setZoom(Math.max(0.000001, newZoom))
   }
 
   const pixelToCanvasCoords = (pixelX: number, pixelY: number): { x: number; y: number } => {
@@ -314,25 +317,78 @@ export default function SimulationCanvas({ simulation, language }: SimulationPro
     const centerY = height / 2 + panY
     const scale = 40 * zoom
 
+    // Calculate visible range based on canvas size and zoom
+    const visibleLeft = (0 - centerX) / scale
+    const visibleRight = (width - centerX) / scale
+    const visibleTop = (centerY - 0) / scale
+    const visibleBottom = (centerY - height) / scale
+
+    // Calculate appropriate grid spacing
+    const baseSpacing = 1  // Base unit for grid spacing
+    const zoomLog = Math.log10(zoom)
+    const majorGridSpacing = Math.pow(10, Math.floor(1 - zoomLog))
+    const minorGridSpacing = majorGridSpacing / 5
+
     ctx.fillStyle = "#ffffff"
     ctx.fillRect(0, 0, width, height)
 
-    ctx.strokeStyle = "#e0e7ff"
+    // Draw minor grid lines
+    ctx.strokeStyle = "#f1f5f9" // Lighter color for minor grid
     ctx.lineWidth = 1
-    const gridSpacing = scale
-    for (let x = -width; x < width * 2; x += gridSpacing) {
-      ctx.beginPath()
-      ctx.moveTo(centerX + x, 0)
-      ctx.lineTo(centerX + x, height)
-      ctx.stroke()
+    
+    // Horizontal minor grid
+    const minorStartX = Math.floor(visibleLeft / minorGridSpacing) * minorGridSpacing
+    const minorEndX = Math.ceil(visibleRight / minorGridSpacing) * minorGridSpacing
+    for (let x = minorStartX; x <= minorEndX; x += minorGridSpacing) {
+      const pixelX = centerX + x * scale
+      if (x % majorGridSpacing !== 0) { // Skip where major lines will be
+        ctx.beginPath()
+        ctx.moveTo(pixelX, 0)
+        ctx.lineTo(pixelX, height)
+        ctx.stroke()
+      }
     }
-    for (let y = -height; y < height * 2; y += gridSpacing) {
+
+    // Vertical minor grid
+    const minorStartY = Math.floor(visibleBottom / minorGridSpacing) * minorGridSpacing
+    const minorEndY = Math.ceil(visibleTop / minorGridSpacing) * minorGridSpacing
+    for (let y = minorStartY; y <= minorEndY; y += minorGridSpacing) {
+      const pixelY = centerY - y * scale
+      if (y % majorGridSpacing !== 0) { // Skip where major lines will be
+        ctx.beginPath()
+        ctx.moveTo(0, pixelY)
+        ctx.lineTo(width, pixelY)
+        ctx.stroke()
+      }
+    }
+
+    // Draw major grid lines
+    ctx.strokeStyle = "#e0e7ff"
+    ctx.lineWidth = 1.5
+
+    // Horizontal major grid
+    const majorStartX = Math.floor(visibleLeft / majorGridSpacing) * majorGridSpacing
+    const majorEndX = Math.ceil(visibleRight / majorGridSpacing) * majorGridSpacing
+    for (let x = majorStartX; x <= majorEndX; x += majorGridSpacing) {
+      const pixelX = centerX + x * scale
       ctx.beginPath()
-      ctx.moveTo(0, centerY + y)
-      ctx.lineTo(width, centerY + y)
+      ctx.moveTo(pixelX, 0)
+      ctx.lineTo(pixelX, height)
       ctx.stroke()
     }
 
+    // Vertical major grid
+    const majorStartY = Math.floor(visibleBottom / majorGridSpacing) * majorGridSpacing
+    const majorEndY = Math.ceil(visibleTop / majorGridSpacing) * majorGridSpacing
+    for (let y = majorStartY; y <= majorEndY; y += majorGridSpacing) {
+      const pixelY = centerY - y * scale
+      ctx.beginPath()
+      ctx.moveTo(0, pixelY)
+      ctx.lineTo(width, pixelY)
+      ctx.stroke()
+    }
+
+    // Draw axes
     ctx.strokeStyle = "#1e293b"
     ctx.lineWidth = 3
     ctx.beginPath()
@@ -344,22 +400,30 @@ export default function SimulationCanvas({ simulation, language }: SimulationPro
     ctx.lineTo(width, centerY)
     ctx.stroke()
 
+    // Draw labels on major grid lines
     ctx.fillStyle = "#334155"
-    ctx.font = `bold ${12 * zoom}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`
-    const labelStep = Math.ceil(1 / zoom)
-    for (let i = -20; i <= 20; i++) {
-      if (i % labelStep === 0 && i !== 0) {
+    const fontSize = Math.max(10, Math.min(14, 12 * zoom))
+    ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`
+
+    // X-axis labels
+    for (let x = majorStartX; x <= majorEndX; x += majorGridSpacing) {
+      if (Math.abs(x) > 0.0001) { // Avoid labeling near zero
+        const pixelX = centerX + x * scale
         ctx.textAlign = "center"
         ctx.textBaseline = "top"
-        ctx.fillText(i.toString(), centerX + i * scale, centerY + 8)
+        const label = x.toFixed(Math.max(0, -Math.floor(Math.log10(majorGridSpacing))))
+        ctx.fillText(label, pixelX, centerY + 8)
       }
     }
 
-    ctx.textAlign = "right"
-    ctx.textBaseline = "middle"
-    for (let i = -20; i <= 20; i++) {
-      if (i % labelStep === 0 && i !== 0) {
-        ctx.fillText(i.toString(), centerX - 12, centerY - i * scale)
+    // Y-axis labels
+    for (let y = majorStartY; y <= majorEndY; y += majorGridSpacing) {
+      if (Math.abs(y) > 0.0001) { // Avoid labeling near zero
+        const pixelY = centerY - y * scale
+        ctx.textAlign = "right"
+        ctx.textBaseline = "middle"
+        const label = y.toFixed(Math.max(0, -Math.floor(Math.log10(majorGridSpacing))))
+        ctx.fillText(label, centerX - 12, pixelY)
       }
     }
 
