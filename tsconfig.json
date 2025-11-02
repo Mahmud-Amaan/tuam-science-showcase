@@ -39,6 +39,7 @@
     ".next\\dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "components/maths/components/simulation-canvas.tsx"
   ]
 }

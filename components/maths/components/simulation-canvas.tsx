@@ -864,9 +864,154 @@ export default function SimulationCanvas({ simulation, language }: SimulationPro
   }
 
   const currentParams = parameters[simulation as keyof typeof parameters]
+  // Sidebar resize state and handlers
+  const [sidebarWidth, setSidebarWidth] = useState<number>(360)
+  const sidebarRef = useRef<HTMLDivElement | null>(null)
+  const isResizingRef = useRef(false)
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isResizingRef.current) return
+      const container = sidebarRef.current?.parentElement
+      if (!container) return
+      const rect = container.getBoundingClientRect()
+      // Sidebar is on the left: width = cursorX - rect.left
+      const newWidth = Math.max(240, Math.min(900, e.clientX - rect.left))
+      setSidebarWidth(newWidth)
+    }
+
+    const onMouseUp = () => {
+      if (isResizingRef.current) {
+        isResizingRef.current = false
+        document.body.style.cursor = ''
+      }
+    }
+
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+  }, [])
+
+  const startResizing = (e: React.MouseEvent) => {
+    e.preventDefault()
+    isResizingRef.current = true
+    document.body.style.cursor = 'col-resize'
+  }
 
   return (
-    <div className="flex flex-col h-full w-full bg-white">
+      <div className="flex h-full w-full bg-white">
+      {/* Left sidebar (resizable) */}
+      <div
+        ref={sidebarRef}
+        className="h-full bg-white border-r border-slate-200 overflow-auto"
+        style={{ width: sidebarWidth }}
+      >
+        <div className="p-4 space-y-4">
+          {/* Data Display (moved into sidebar) */}
+          <div className="bg-white/98 backdrop-blur-md rounded-xl shadow p-3 border border-blue-200 max-h-56 overflow-auto">
+            <h4 className="font-bold text-slate-900 mb-2 text-sm flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-500" />
+              {language === 'en' ? 'Data' : 'ডেটা'}
+            </h4>
+            <div className="space-y-2 text-sm">
+              {Object.keys(data).length === 0 ? (
+                <div className="text-sm text-slate-500">{language === 'en' ? 'No data' : 'ডেটা নেই'}</div>
+              ) : (
+                Object.entries(data).map(([key, value]) => (
+                  <div key={key} className="flex justify-between items-center gap-2 pb-2 border-b border-slate-100 last:border-0 last:pb-0">
+                    <span className="font-medium text-slate-600">{key}</span>
+                    <span className="text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded truncate">{value}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Formula */}
+          <div className="p-3 bg-white rounded-lg border-2 border-blue-300 shadow-md">
+            <h3 className="text-sm font-bold text-blue-900 mb-2">{language === 'en' ? 'Formula' : 'সুত্র'}</h3>
+            <p className="text-base font-bold text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-indigo-600 font-mono">{getFormula(simulation)}</p>
+            <div className="mt-3 space-y-1 bg-blue-50 rounded p-2 hidden sm:block">
+              {Object.entries(inputValues).slice(0, 2).map(([key, value]) => (
+                <div key={key} className="text-sm flex justify-between">
+                  <span className="text-slate-700 font-medium">{getParameterLabel(key, language)}:</span>
+                  <span className="text-blue-700 font-bold">{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Variables */}
+          <div className="text-sm">
+            <h3 className="font-bold text-slate-900 mb-2 flex items-center gap-2">{language === 'en' ? 'Variables' : 'চলক'}</h3>
+            <div className="space-y-2">
+              {['linear', 'quadratic', 'exponential'].includes(simulation) && (
+                <div>
+                  <label className="text-sm font-bold text-slate-700 block">X</label>
+                  <input
+                    type="number"
+                    value={xInput}
+                    onChange={(e) => setXInput(e.target.value)}
+                    step="0.1"
+                    className="w-full px-2 py-1 border border-emerald-300 rounded text-sm font-bold text-emerald-700 bg-emerald-50"
+                  />
+                  {calculatedY !== null && <div className="text-sm bg-emerald-100 text-emerald-900 font-bold px-2 py-0.5 rounded mt-1">Y = {calculatedY}</div>}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* X/Y Table */}
+          <div className="bg-white rounded-lg border-2 border-amber-300 shadow-md p-3 max-h-40 overflow-auto">
+            <h3 className="text-sm font-bold text-amber-900 mb-2">X/Y</h3>
+            <table className="w-full text-sm">
+              <tbody>
+                {tableValues.slice(0, 20).map((row, idx) => (
+                  <tr key={idx} className="border-b border-amber-100">
+                    <td className="text-amber-800 font-mono">{row.x}</td>
+                    <td className="text-right text-amber-700 font-bold">{row.y}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Adjust / Sliders */}
+          <div>
+            <h3 className="font-bold text-slate-900 text-sm mb-2">{language === 'en' ? 'Adjust' : 'সমন্বয়'}</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
+              {Object.entries(inputValues).slice(0, 8).map(([key]) => (
+                <div key={key} className="space-y-1">
+                  <span className="text-sm text-slate-600 font-medium block truncate">{getParameterLabel(key, language)}</span>
+                  <input
+                    type="range"
+                    min={key === 'base' ? '1.1' : '-20'}
+                    max={key === 'base' ? '10' : '20'}
+                    step="0.05"
+                    value={inputValues[key]}
+                    onChange={(e) => handleInputChange(key, e.target.value)}
+                    className="w-full h-1.5 sm:h-2 bg-linear-to-r from-purple-300 to-blue-300 rounded"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Resizer */}
+      <div
+        onMouseDown={startResizing}
+        role="separator"
+        aria-orientation="vertical"
+        className="w-2 cursor-col-resize hover:bg-slate-100"
+        style={{ zIndex: 50 }}
+      />
+
+      {/* Canvas area (right) */}
       <div className="flex-1 relative bg-white overflow-hidden">
         <canvas
           ref={canvasRef}
@@ -882,125 +1027,10 @@ export default function SimulationCanvas({ simulation, language }: SimulationPro
         />
 
         {/* Zoom Info */}
-        <div className="absolute bottom-3 left-3 sm:bottom-6 sm:left-6 bg-gradient-to-r from-slate-800 to-slate-900 text-white px-3 py-2 sm:px-4 sm:py-3 rounded-xl text-xs font-mono shadow-lg border border-slate-700 backdrop-blur-sm">
+        <div className="absolute bottom-3 left-3 sm:bottom-6 sm:left-6 bg-linear-to-r from-slate-800 to-slate-900 text-white px-3 py-2 sm:px-4 sm:py-3 rounded-xl text-xs font-mono shadow-lg border border-slate-700 backdrop-blur-sm">
           <div className="flex gap-2 flex-wrap">
             <span>🔍 {zoom.toFixed(1)}x</span>
             <span className="hidden sm:inline">Scroll zoom</span>
-          </div>
-        </div>
-
-        {/* Data Display */}
-        {Object.keys(data).length > 0 && (
-          <div className="absolute top-3 right-3 sm:top-6 sm:right-6 bg-white/98 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-2xl p-3 sm:p-5 max-w-xs sm:max-w-sm border border-blue-200 max-h-48 sm:max-h-80 overflow-auto">
-            <h4 className="font-bold text-slate-900 mb-2 sm:mb-4 text-xs sm:text-sm flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-              {language === "en" ? "Data" : "ডেটা"}
-            </h4>
-            <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
-              {Object.entries(data).map(([key, value]) => (
-                <div
-                  key={key}
-                  className="flex justify-between items-center gap-2 pb-2 border-b border-slate-100 last:border-0 last:pb-0"
-                >
-                  <span className="font-medium text-slate-600">{key}</span>
-                  <span className="text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded truncate">{value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Controls Section - Mobile-Optimized */}
-      <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-t-2 border-blue-200 p-2 sm:p-4 space-y-3 sm:space-y-4 shadow-lg max-h-40 sm:max-h-48 overflow-y-auto">
-        {/* Compact Grid for Small Screens */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
-          {/* Formula Display */}
-          <div className="col-span-1 p-2 sm:p-3 bg-white rounded-lg sm:rounded-xl border-2 border-blue-300 shadow-md">
-            <h3 className="text-xs font-bold text-blue-900 mb-1 sm:mb-3 tracking-wider">Formula</h3>
-            <p className="text-sm sm:text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 font-mono mb-2">
-              {getFormula(simulation)}
-            </p>
-            <div className="space-y-1 bg-blue-50 rounded p-2 hidden sm:block">
-              {Object.entries(inputValues)
-                .slice(0, 2)
-                .map(([key, value]) => (
-                  <div key={key} className="text-xs flex justify-between">
-                    <span className="text-slate-700 font-medium">{getParameterLabel(key, language)}:</span>
-                    <span className="text-blue-700 font-bold">{value}</span>
-                  </div>
-                ))}
-            </div>
-          </div>
-
-          {/* Variable Inputs */}
-          <div className="col-span-1 text-xs sm:text-sm">
-            <h3 className="font-bold text-slate-900 text-xs mb-2 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
-              Variables
-            </h3>
-            <div className="space-y-1">
-              {["linear", "quadratic", "exponential"].includes(simulation) && (
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block">X</label>
-                  <input
-                    type="number"
-                    value={xInput}
-                    onChange={(e) => setXInput(e.target.value)}
-                    step="0.1"
-                    className="w-full px-2 py-1 border border-emerald-300 rounded text-xs font-bold text-emerald-700 bg-emerald-50"
-                  />
-                  {calculatedY !== null && (
-                    <div className="text-xs bg-emerald-100 text-emerald-900 font-bold px-2 py-0.5 rounded mt-1">
-                      Y = {calculatedY}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* X/Y Table - Scrollable */}
-          <div className="col-span-1 bg-white rounded-lg sm:rounded-xl border-2 border-amber-300 shadow-md p-2 sm:p-3 max-h-32 overflow-auto">
-            <h3 className="text-xs font-bold text-amber-900 mb-1 sticky top-0 bg-white">X/Y</h3>
-            <table className="w-full text-xs">
-              <tbody>
-                {tableValues.slice(0, 6).map((row, idx) => (
-                  <tr key={idx} className="border-b border-amber-100">
-                    <td className="text-amber-800 font-mono">{row.x}</td>
-                    <td className="text-right text-amber-700 font-bold">{row.y}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Sliders - Horizontal Grid */}
-        <div className="pt-1 sm:pt-2 border-t border-blue-200">
-          <h3 className="font-bold text-slate-900 text-xs mb-2 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-purple-600"></span>
-            Adjust
-          </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-1 sm:gap-2">
-            {Object.entries(inputValues)
-              .slice(0, 4)
-              .map(([key]) => (
-                <div key={key} className="space-y-0.5">
-                  <span className="text-xs text-slate-600 font-medium block truncate">
-                    {getParameterLabel(key, language)}
-                  </span>
-                  <input
-                    type="range"
-                    min={key === "base" ? "1.1" : "-20"}
-                    max={key === "base" ? "10" : "20"}
-                    step="0.05"
-                    value={inputValues[key]}
-                    onChange={(e) => handleInputChange(key, e.target.value)}
-                    className="w-full h-1.5 sm:h-2 bg-gradient-to-r from-purple-300 to-blue-300 rounded"
-                  />
-                </div>
-              ))}
           </div>
         </div>
       </div>
