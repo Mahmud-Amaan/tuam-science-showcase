@@ -35,6 +35,7 @@ export default function BiologyPage() {
       descEn: "Ecosystems and environmental interactions",
       descBn: "ইকোসিস্টেম এবং পরিবেশগত মিথস্ক্রিয়া",
       icon: "🌍",
+      href: "/biology/ecology",
     },
     {
       titleEn: "Human Anatomy",

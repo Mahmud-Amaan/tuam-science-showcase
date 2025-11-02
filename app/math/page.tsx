@@ -14,32 +14,11 @@ export default function MathPage() {
 
   const topics = [
     {
-      titleEn: "Algebra",
-      titleBn: "বীজগণিত",
-      descEn: "Master equations, inequalities, and polynomial functions",
-      descBn: "সমীকরণ, অসমতা এবং বহুপদী ফাংশন আয়ত্ত করুন",
-      icon: "x²",
-    },
-    {
-      titleEn: "Geometry",
-      titleBn: "জ্যামিতি",
-      descEn: "Explore shapes, angles, and spatial relationships",
-      descBn: "আকৃতি, কোণ এবং স্থানিক সম্পর্ক অন্বেষণ করুন",
-      icon: "△",
-    },
-    {
-      titleEn: "Calculus",
-      titleBn: "ক্যালকুলাস",
-      descEn: "Understand limits, derivatives, and integrals",
-      descBn: "সীমা, ডেরিভেটিভ এবং ইন্টেগ্রাল বুঝুন",
-      icon: "∫",
-    },
-    {
-      titleEn: "Statistics",
-      titleBn: "পরিসংখ্যান",
-      descEn: "Learn data analysis and probability",
-      descBn: "ডেটা বিশ্লেষণ এবং সম্ভাব্যতা শিখুন",
-      icon: "📊",
+      titleEn: "Graph Calculator",
+      titleBn: "স্থানাঙ্ক জ্যামিতি",
+      descEn: "Calculate Graphs of Multiple Functions Easily",
+      descBn: "একাধিক ফাংশনের গ্রাফ সহজেই গণনা করুন",
+      icon: "📈",
     },
   ]
 

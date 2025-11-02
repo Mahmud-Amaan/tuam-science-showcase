@@ -37,27 +37,6 @@ export default function ChemistryPage() {
       icon: "🔬",
       href: "/chemistry/molecules",
     },
-    {
-      titleEn: "Organic Chemistry",
-      titleBn: "জৈব রসায়ন",
-      descEn: "Carbon compounds and organic reactions",
-      descBn: "কার্বন যৌগ এবং জৈব বিক্রিয়া",
-      icon: "🌿",
-    },
-    {
-      titleEn: "Physical Chemistry",
-      titleBn: "ভৌত রসায়ন",
-      descEn: "Thermodynamics and kinetics",
-      descBn: "তাপগতিবিদ্যা এবং গতিবিদ্যা",
-      icon: "⚡",
-    },
-    {
-      titleEn: "Biochemistry",
-      titleBn: "জৈব রসায়ন",
-      descEn: "Chemistry of living organisms",
-      descBn: "জীবন্ত জীবের রসায়ন",
-      icon: "🧬",
-    },
   ]
 
   return (

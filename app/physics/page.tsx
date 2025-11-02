@@ -45,27 +45,6 @@ export default function PhysicsPage() {
       icon: "🔭",
       route: "/physics/optics",
     },
-    {
-      titleEn: "Thermodynamics",
-      titleBn: "তাপগতিবিদ্যা",
-      descEn: "Heat, temperature, and energy transfer",
-      descBn: "তাপ, তাপমাত্রা এবং শক্তি স্থানান্তর",
-      icon: "🌡️",
-    },
-    {
-      titleEn: "Waves & Optics",
-      titleBn: "তরঙ্গ এবং অপটিক্স",
-      descEn: "Light, sound, and wave phenomena",
-      descBn: "আলো, শব্দ এবং তরঙ্গ ঘটনা",
-      icon: "💡",
-    },
-    {
-      titleEn: "Electromagnetism",
-      titleBn: "তড়িৎচুম্বকত্ব",
-      descEn: "Electricity, magnetism, and circuits",
-      descBn: "বিদ্যুৎ, চুম্বকত্ব এবং সার্কিট",
-      icon: "⚡",
-    },
   ]
 
   return (

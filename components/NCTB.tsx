@@ -7,25 +7,11 @@ interface NCTBProps {
 const NCTB = ({ language }: NCTBProps) => {
   const curricula = [
     {
-      classEn: "Class 6-10",
-      classBn: "ষষ্ঠ-দশম শ্রেণী",
-      topicsEn: "All core science subjects",
-      topicsBn: "সমস্ত মূল বিজ্ঞান বিষয়",
-      icon: "📖",
-    },
-    {
-      classEn: "Class 11-12 (Science)",
-      classBn: "একাদশ-দ্বাদশ শ্রেণী (বিজ্ঞান)",
+      classEn: "Class 9-10 (Science)",
+      classBn: "নবম-দশ শ্রেণী (বিজ্ঞান)",
       topicsEn: "Advanced Physics, Chemistry, Biology",
       topicsBn: "উন্নত পদার্থবিদ্যা, রসায়ন, জীববিজ্ঞান",
       icon: "🔬",
-    },
-    {
-      classEn: "HSC Math",
-      classBn: "এইচএসসি গণিত",
-      topicsEn: "Calculus, Statistics, Algebra",
-      topicsBn: "ক্যালকুলাস, পরিসংখ্যান, বীজগণিত",
-      icon: "📐",
     },
   ]
 
