@@ -58,6 +58,18 @@ const SubjectCards = ({ language }: SubjectCardsProps) => {
       accentLight: "bg-orange-100",
       iconAnimation: "group-hover:scale-125 transition-transform duration-300",
     },
+    {
+      icon: "💻",
+      titleEn: "ICT",
+      titleBn: "আইসিটি",
+      descEn: "Discover the world of Information and Communication Technology.",
+      descBn: "তথ্য ও যোগাযোগ প্রযুক্তির বিশ্ব আবিষ্কার করুন।",
+      gradient: "from-sky-50/80 to-blue-50/40",
+      borderColor: "border-sky-200/50",
+      accentColor: "bg-sky-500",
+      accentLight: "bg-sky-100",
+      iconAnimation: "group-hover:scale-125 transition-transform duration-300",
+    },
   ]
 
   return (
@@ -112,6 +124,8 @@ const SubjectCards = ({ language }: SubjectCardsProps) => {
                       "রসায়ন": "/chemistry",
                       "Biology": "/biology",
                       "জীববিজ্ঞান": "/biology",
+                      "ICT": "/ict",
+                      "আইসিটি": "/ict",
                     }
                     const route = routes[subject.titleEn] || routes[subject.titleBn] || "/"
                     router.push(route)

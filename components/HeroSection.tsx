@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronRight, Zap, Calculator, Atom, FlaskConical, Leaf } from "lucide-react"
+import { ChevronRight, Zap, Calculator, Atom, FlaskConical, Leaf, Laptop } from "lucide-react"
 
 interface HeroProps {
   language: "en" | "bn"
@@ -111,6 +111,16 @@ const HeroSection = ({ language }: HeroProps) => {
               glow: "shadow-orange-500/50",
               hoverGlow: "group-hover:shadow-orange-500/80",
               borderGlow: "border-orange-400/60 group-hover:border-orange-300",
+            },
+            {
+              icon: Laptop,
+              label: language === "en" ? "ICT" : "আইসিটি",
+              desc: "Info & Comms Tech",
+              route: "/ict",
+              gradient: "from-sky-500 via-blue-400 to-sky-600",
+              glow: "shadow-sky-500/50",
+              hoverGlow: "group-hover:shadow-sky-500/80",
+              borderGlow: "border-sky-400/60 group-hover:border-sky-300",
             },
           ].map((subject, idx) => {
             const IconComponent = subject.icon
