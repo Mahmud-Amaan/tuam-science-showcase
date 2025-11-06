@@ -1,8 +1,10 @@
 "use client"
-
+import ReactMarkdown from "react-markdown";
 import type React from "react"
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 type ChatMsg = { role: "user" | "bot"; text: string; time?: number }
 type Intent = { type: "navigate" | "answer"; target?: string }
@@ -12,6 +14,7 @@ export default function AIHelper() {
   const [mounted, setMounted] = useState(false)
   const [open, setOpen] = useState(false)
   const [listening, setListening] = useState(false)
+  const [speechToSpeechMode, setSpeechToSpeechMode] = useState(false)
   const [lang, setLang] = useState<"en" | "bn">("en")
   const [messages, setMessages] = useState<ChatMsg[]>([])
   const [sidebarWidth, setSidebarWidth] = useState(420)
@@ -21,6 +24,8 @@ export default function AIHelper() {
   const recogRef = useRef<any>(null)
   const resizeStartX = useRef(0)
   const resizeStartWidth = useRef(0)
+  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const interimTranscriptRef = useRef("")
 
   // Initialize component on client-side only
   useEffect(() => {
@@ -42,6 +47,7 @@ export default function AIHelper() {
     ])
   }, [mounted, lang])
 
+  // Setup speech recognition with continuous listening
   useEffect(() => {
     if (!mounted || typeof window === "undefined") return
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
@@ -50,22 +56,73 @@ export default function AIHelper() {
       return
     }
     const recog = new SpeechRecognition()
-    recog.continuous = false
-    recog.interimResults = false
+    recog.continuous = true  // Keep listening continuously
+    recog.interimResults = true  // Get interim results
     recog.lang = lang === "bn" ? "bn-BD" : "en-US"
+    
     recog.onresult = (e: any) => {
-      const text = e.results[0][0].transcript
-      handleSubmit(text, true)
+      let interimTranscript = ""
+      let finalTranscript = ""
+
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const transcript = e.results[i][0].transcript
+        if (e.results[i].isFinal) {
+          finalTranscript += transcript
+        } else {
+          interimTranscript += transcript
+        }
+      }
+
+      interimTranscriptRef.current = interimTranscript
+
+      // If we got a final transcript, reset silence timer
+      if (finalTranscript.trim()) {
+        if (silenceTimerRef.current) {
+          clearTimeout(silenceTimerRef.current)
+        }
+
+        // Set a timer to detect when user stops speaking (2 seconds of silence)
+        silenceTimerRef.current = setTimeout(() => {
+          if (finalTranscript.trim() && speechToSpeechMode) {
+            handleSubmit(finalTranscript.trim(), true)
+            interimTranscriptRef.current = ""
+          }
+        }, 2000)
+      }
     }
+    
     recog.onerror = (e: any) => {
       console.warn("SpeechRecognition error:", e)
-      setListening(false)
+      if (e.error === "no-speech" && speechToSpeechMode) {
+        // Restart if in speech-to-speech mode and no speech detected
+        try {
+          recog.start()
+        } catch {}
+      } else if (e.error !== "aborted") {
+        setListening(false)
+        setSpeechToSpeechMode(false)
+      }
     }
+    
     recog.onend = () => {
-      setListening(false)
+      // If speech-to-speech mode is still active, restart recognition
+      if (speechToSpeechMode) {
+        try {
+          recog.start()
+        } catch {}
+      } else {
+        setListening(false)
+      }
     }
+    
     recogRef.current = recog
-  }, [mounted, lang])
+
+    return () => {
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current)
+      }
+    }
+  }, [mounted, lang, speechToSpeechMode])
 
   useEffect(() => {
     if (!scrollRef.current) return
@@ -105,20 +162,34 @@ export default function AIHelper() {
   }, [isResizing])
 
   const speak = (text: string) => {
+    if (!speechToSpeechMode) return  // Only speak in speech-to-speech mode
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return
+    
     try {
+      window.speechSynthesis.cancel()  // Stop any ongoing speech
+      
       const utter = new SpeechSynthesisUtterance(text)
       utter.lang = lang === "bn" ? "bn-BD" : "en-US"
       utter.rate = 0.95
       utter.pitch = 1
-      window.speechSynthesis.cancel()
+      
+      // Get voices and try to select appropriate one
+      const voices = window.speechSynthesis.getVoices()
+      if (lang === "bn") {
+        const banglaVoice = voices.find(v => v.lang.startsWith("bn"))
+        if (banglaVoice) utter.voice = banglaVoice
+      } else {
+        const englishVoice = voices.find(v => v.lang.startsWith("en"))
+        if (englishVoice) utter.voice = englishVoice
+      }
+      
       window.speechSynthesis.speak(utter)
     } catch (e) {
       console.error("TTS failed:", e)
     }
   }
 
-  const toggleMic = () => {
+  const toggleSpeechToSpeech = () => {
     if (typeof window === "undefined") return
     
     const recog = recogRef.current
@@ -126,18 +197,29 @@ export default function AIHelper() {
       alert("Speech recognition not supported in this browser. Use Chrome/Edge.")
       return
     }
-    if (listening) {
+
+    const newMode = !speechToSpeechMode
+    setSpeechToSpeechMode(newMode)
+
+    if (newMode) {
+      // Start continuous listening
       try {
-        recog.stop()
-      } catch {}
-      setListening(false)
-    } else {
-      try {
+        window.speechSynthesis.cancel()  // Stop any ongoing speech
         recog.lang = lang === "bn" ? "bn-BD" : "en-US"
         recog.start()
         setListening(true)
       } catch (e) {
         console.error("recog start failed", e)
+      }
+    } else {
+      // Stop listening
+      try {
+        recog.stop()
+        window.speechSynthesis.cancel()
+      } catch {}
+      setListening(false)
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current)
       }
     }
   }
@@ -182,9 +264,8 @@ export default function AIHelper() {
       return copy
     })
 
-    if (typeof window !== "undefined") {
-      speak(data.reply)
-    }
+    // Only speak if in speech-to-speech mode
+    speak(data.reply)
 
     if (data.intent && data.intent.type === "navigate" && data.intent.target) {
       setTimeout(() => {
@@ -339,6 +420,14 @@ export default function AIHelper() {
                 opacity: 1;
               }
             }
+            @keyframes pulse {
+              0%, 100% {
+                opacity: 1;
+              }
+              50% {
+                opacity: 0.5;
+              }
+            }
           `}</style>
 
           {/* Header */}
@@ -378,7 +467,16 @@ export default function AIHelper() {
               </div>
             </div>
             <button
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setOpen(false)
+                setSpeechToSpeechMode(false)
+                if (recogRef.current) {
+                  try {
+                    recogRef.current.stop()
+                  } catch {}
+                }
+                window.speechSynthesis.cancel()
+              }}
               style={{
                 background: "rgba(255, 255, 255, 0.2)",
                 border: "none",
@@ -417,6 +515,7 @@ export default function AIHelper() {
               gap: "10px",
               alignItems: "center",
               background: "rgba(248, 250, 252, 0.5)",
+              flexWrap: "wrap",
             }}
           >
             <button
@@ -489,6 +588,46 @@ export default function AIHelper() {
             >
               {lang === "en" ? "Clear" : "সাফ করুন"}
             </button>
+            <button
+              onClick={toggleSpeechToSpeech}
+              style={{
+                padding: "8px 14px",
+                borderRadius: "8px",
+                border: "1.5px solid #e2e8f0",
+                background: speechToSpeechMode ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "#ffffff",
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: 600,
+                transition: "all 0.2s",
+                color: speechToSpeechMode ? "white" : "#10b981",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+              onMouseEnter={(e) => {
+                if (!speechToSpeechMode) {
+                  ;(e.currentTarget as HTMLButtonElement).style.background = "#f1f5f9"
+                  ;(e.currentTarget as HTMLButtonElement).style.borderColor = "#10b981"
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!speechToSpeechMode) {
+                  ;(e.currentTarget as HTMLButtonElement).style.background = "#ffffff"
+                  ;(e.currentTarget as HTMLButtonElement).style.borderColor = "#e2e8f0"
+                }
+              }}
+            >
+              {speechToSpeechMode && (
+                <span style={{ 
+                  width: "8px", 
+                  height: "8px", 
+                  borderRadius: "50%", 
+                  background: "white",
+                  animation: "pulse 1.5s infinite"
+                }} />
+              )}
+              {lang === "en" ? (speechToSpeechMode ? "Voice Mode ON" : "Voice Mode") : (speechToSpeechMode ? "ভয়েস মোড চালু" : "ভয়েস মোড")}
+            </button>
           </div>
 
           {/* Messages */}
@@ -520,10 +659,9 @@ export default function AIHelper() {
                     borderRadius: m.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
                     background: m.role === "user" ? "linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%)" : "white",
                     color: m.role === "user" ? "white" : "#1e293b",
-                    boxShadow:
-                      m.role === "bot"
-                        ? "0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)"
-                        : "0 1px 3px rgba(6, 182, 212, 0.1)",
+                    boxShadow: m.role === "bot"
+                      ? "0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)"
+                      : "0 1px 3px rgba(6, 182, 212, 0.1)",
                     border: m.role === "bot" ? "1px solid #e2e8f0" : "none",
                     fontSize: "14px",
                     lineHeight: "1.6",
@@ -531,7 +669,30 @@ export default function AIHelper() {
                     fontWeight: m.role === "user" ? 500 : 400,
                   }}
                 >
-                  {m.text}
+                  {m.role === "bot" ? (
+                    <ReactMarkdown
+                      components={{
+                        code({ node, inline, className, children, ...props }: any) {
+                          const match = /language-(\w+)/.exec(className || '');
+                          const { style: _markdownCodeStyle, ...restProps } = props as Record<string, any>;
+                          return !inline && match ? (
+                            <SyntaxHighlighter
+                              style={oneDark}
+                              language={match[1]}
+                              PreTag="div"
+                              {...restProps}
+                            >
+                              {String(children).replace(/\n$/, '')}
+                            </SyntaxHighlighter>
+                          ) : (
+                            <code className={className} {...props}>{children}</code>
+                          );
+                        }
+                      }}
+                    >
+                      {m.text}
+                    </ReactMarkdown>
+                  ) : m.text}
                 </div>
               </div>
             ))}
@@ -549,53 +710,12 @@ export default function AIHelper() {
               boxShadow: "0 -4px 12px rgba(0, 0, 0, 0.04)",
             }}
           >
-            <button
-              onClick={toggleMic}
-              title="Start/Stop voice input"
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: "10px",
-                border: "none",
-                background: listening
-                  ? "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)"
-                  : "linear-gradient(135deg, #06b6d4 0%, #0ea5e9 100%)",
-                color: "white",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "all 0.2s",
-                boxShadow: "0 4px 12px rgba(6, 182, 212, 0.2)",
-              }}
-              onMouseEnter={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1.08)"
-              }}
-              onMouseLeave={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1)"
-              }}
-            >
-              {listening ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <circle cx="12" cy="12" r="2" />
-                  <circle cx="19" cy="12" r="2" opacity="0.5" />
-                  <circle cx="5" cy="12" r="2" opacity="0.5" />
-                </svg>
-              ) : (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                  <line x1="12" y1="19" x2="12" y2="23" />
-                  <line x1="8" y1="23" x2="16" y2="23" />
-                </svg>
-              )}
-            </button>
-
             <input
               ref={inputRef}
               type="text"
               placeholder={lang === "en" ? "Ask something..." : "কিছু জিজ্ঞাসা করুন..."}
               onKeyDown={handleKeyDown}
+              disabled={speechToSpeechMode}
               style={{
                 flex: 1,
                 padding: "12px 16px",
@@ -604,13 +724,16 @@ export default function AIHelper() {
                 outline: "none",
                 fontSize: "14px",
                 transition: "all 0.2s",
-                background: "#f8fafc",
+                background: speechToSpeechMode ? "#f1f5f9" : "#f8fafc",
                 fontWeight: 500,
+                opacity: speechToSpeechMode ? 0.6 : 1,
               }}
               onFocus={(e) => {
-                ;(e.currentTarget as HTMLInputElement).style.borderColor = "#0ea5e9"
-                ;(e.currentTarget as HTMLInputElement).style.background = "#ffffff"
-                ;(e.currentTarget as HTMLInputElement).style.boxShadow = "0 0 0 3px rgba(14, 165, 233, 0.1)"
+                if (!speechToSpeechMode) {
+                  ;(e.currentTarget as HTMLInputElement).style.borderColor = "#0ea5e9"
+                  ;(e.currentTarget as HTMLInputElement).style.background = "#ffffff"
+                  ;(e.currentTarget as HTMLInputElement).style.boxShadow = "0 0 0 3px rgba(14, 165, 233, 0.1)"
+                }
               }}
               onBlur={(e) => {
                 ;(e.currentTarget as HTMLInputElement).style.borderColor = "#e2e8f0"
@@ -626,27 +749,33 @@ export default function AIHelper() {
                 inputRef.current!.value = ""
                 handleSubmit(v, false)
               }}
+              disabled={speechToSpeechMode}
               style={{
                 padding: "12px 18px",
                 borderRadius: "10px",
                 border: "none",
-                background: "linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%)",
+                background: speechToSpeechMode ? "#cbd5e1" : "linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%)",
                 color: "white",
-                cursor: "pointer",
+                cursor: speechToSpeechMode ? "not-allowed" : "pointer",
                 fontWeight: 600,
                 transition: "all 0.2s",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: "0 4px 12px rgba(6, 182, 212, 0.2)",
+                boxShadow: speechToSpeechMode ? "none" : "0 4px 12px rgba(6, 182, 212, 0.2)",
+                opacity: speechToSpeechMode ? 0.6 : 1,
               }}
               onMouseEnter={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1.08)"
-                ;(e.currentTarget as HTMLButtonElement).style.boxShadow = "0 8px 20px rgba(6, 182, 212, 0.3)"
+                if (!speechToSpeechMode) {
+                  ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1.08)"
+                  ;(e.currentTarget as HTMLButtonElement).style.boxShadow = "0 8px 20px rgba(6, 182, 212, 0.3)"
+                }
               }}
               onMouseLeave={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1)"
-                ;(e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 12px rgba(6, 182, 212, 0.2)"
+                if (!speechToSpeechMode) {
+                  ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1)"
+                  ;(e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 12px rgba(6, 182, 212, 0.2)"
+                }
               }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -681,13 +810,94 @@ export default function AIHelper() {
               }
             }}
           />
+
+          {/* Voice Mode Indicator */}
+          {speechToSpeechMode && (
+            <div
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                background: "rgba(16, 185, 129, 0.95)",
+                color: "white",
+                padding: "16px 24px",
+                borderRadius: "12px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "12px",
+                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.2)",
+                pointerEvents: "none",
+                zIndex: 10001,
+              }}
+            >
+              <div style={{ 
+                width: "48px", 
+                height: "48px", 
+                borderRadius: "50%", 
+                background: "rgba(255, 255, 255, 0.2)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="23" />
+                  <line x1="8" y1="23" x2="16" y2="23" />
+                </svg>
+              </div>
+              <div style={{ 
+                fontSize: "16px", 
+                fontWeight: 600, 
+                textAlign: "center" 
+              }}>
+                {lang === "en" ? "Listening..." : "শুনছি..."}
+              </div>
+              <div style={{ 
+                fontSize: "13px", 
+                opacity: 0.9,
+                textAlign: "center" 
+              }}>
+                {lang === "en" ? "Speak your question" : "আপনার প্রশ্ন বলুন"}
+              </div>
+              <div style={{ 
+                display: "flex", 
+                gap: "4px",
+                marginTop: "4px"
+              }}>
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    style={{
+                      width: "6px",
+                      height: "24px",
+                      background: "white",
+                      borderRadius: "3px",
+                      animation: `pulse 1s infinite ${i * 0.2}s`,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* Overlay */}
       {open && (
         <div
-          onClick={() => setOpen(false)}
+          onClick={() => {
+            setOpen(false)
+            setSpeechToSpeechMode(false)
+            if (recogRef.current) {
+              try {
+                recogRef.current.stop()
+              } catch {}
+            }
+            window.speechSynthesis.cancel()
+          }}
           style={{
             position: "fixed",
             left: 0,
