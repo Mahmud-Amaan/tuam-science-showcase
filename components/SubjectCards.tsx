@@ -73,15 +73,15 @@ const SubjectCards = ({ language }: SubjectCardsProps) => {
   ]
 
   return (
-    <section id="subject-cards" className="relative py-24 px-4 bg-gradient-to-b from-white to-slate-50/50">
+    <section id="subject-cards" className="relative py-24 px-4 bg-gradient-to-b from-white to-slate-50/50" aria-labelledby="subject-cards-heading">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-cyan-100/20 to-transparent rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-green-100/20 to-transparent rounded-full blur-3xl" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-cyan-100/20 to-transparent rounded-full blur-3xl" aria-hidden="true" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-green-100/20 to-transparent rounded-full blur-3xl" aria-hidden="true" />
       </div>
 
       <div className="max-w-7xl mx-auto relative z-10">
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
+          <h2 id="subject-cards-heading" className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
             {language === "en" ? "Choose Your Subject" : "আপনার বিষয় নির্বাচন করুন"}
           </h2>
           <p className="text-lg text-slate-600 max-w-2xl mx-auto">
@@ -91,22 +91,61 @@ const SubjectCards = ({ language }: SubjectCardsProps) => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" role="list" aria-label={language === "en" ? "Available subjects" : "উপলব্ধ বিষয়সমূহ"}>
           {subjects.map((subject, idx) => (
             <div
               key={idx}
-              className={`group relative p-8 rounded-2xl bg-gradient-to-br ${subject.gradient} border ${subject.borderColor} hover:border-white/60 transition-all duration-300 cursor-pointer overflow-hidden hover:shadow-2xl hover:shadow-blue-500/10 transform hover:-translate-y-3`}
+              className={`group relative p-8 rounded-2xl bg-gradient-to-br ${subject.gradient} border ${subject.borderColor} hover:border-white/60 transition-all duration-300 cursor-pointer overflow-hidden hover:shadow-2xl hover:shadow-blue-500/10 transform hover:-translate-y-3 focus:outline-none focus:ring-4 focus:ring-white/50 focus:border-white/60`}
+              role="listitem"
+              tabIndex={0}
+              aria-label={`${language === "en" ? subject.titleEn : subject.titleBn} subject card`}
+              onClick={() => {
+                const routes: Record<string, string> = {
+                  "Mathematics": "/math",
+                  "গণিত": "/math",
+                  "Physics": "/physics",
+                  "পদার্থবিদ্যা": "/physics",
+                  "Chemistry": "/chemistry",
+                  "রসায়ন": "/chemistry",
+                  "Biology": "/biology",
+                  "জীববিজ্ঞান": "/biology",
+                  "ICT": "/ict",
+                  "আইসিটি": "/ict",
+                }
+                const route = routes[subject.titleEn] || routes[subject.titleBn] || "/"
+                router.push(route)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  const routes: Record<string, string> = {
+                    "Mathematics": "/math",
+                    "গণিত": "/math",
+                    "Physics": "/physics",
+                    "পদার্থবিদ্যা": "/physics",
+                    "Chemistry": "/chemistry",
+                    "রসায়ন": "/chemistry",
+                    "Biology": "/biology",
+                    "জীববিজ্ঞান": "/biology",
+                    "ICT": "/ict",
+                    "আইসিটি": "/ict",
+                  }
+                  const route = routes[subject.titleEn] || routes[subject.titleBn] || "/"
+                  router.push(route)
+                }
+              }}
             >
               {/* Background accent with glow */}
               <div
                 className={`absolute -top-8 -right-8 w-32 h-32 ${subject.accentColor} rounded-full opacity-5 group-hover:opacity-30 transition-opacity duration-300 blur-lg`}
+                aria-hidden="true"
               />
 
               {/* Inner shadow effect */}
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" aria-hidden="true" />
 
               <div className="relative z-10">
-                <div className={`text-5xl mb-4 inline-block ${subject.iconAnimation}`}>{subject.icon}</div>
+                <div className={`text-5xl mb-4 inline-block ${subject.iconAnimation}`} role="img" aria-label={`${language === "en" ? subject.titleEn : subject.titleBn} icon`}>{subject.icon}</div>
                 <h3 className="text-2xl font-bold text-slate-900 mb-3">
                   {language === "en" ? subject.titleEn : subject.titleBn}
                 </h3>
@@ -131,13 +170,14 @@ const SubjectCards = ({ language }: SubjectCardsProps) => {
                     router.push(route)
                   }}
                   className={`w-full py-3 rounded-lg ${subject.accentColor} text-white font-semibold text-sm opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-y-0 translate-y-2 hover:shadow-lg`}
+                  aria-label={`${language === "en" ? "Explore" : "অন্বেষণ করুন"} ${language === "en" ? subject.titleEn : subject.titleBn}`}
                 >
                   {language === "en" ? "Explore Now" : "এখনই অন্বেষণ করুন"}
                 </button>
               </div>
 
               {/* Border glow effect */}
-              <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-white/40 transition-all duration-300" />
+              <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-white/40 transition-all duration-300" aria-hidden="true" />
             </div>
           ))}
         </div>

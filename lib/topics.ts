@@ -12,6 +12,7 @@ export const topics = {
     { href: "/chemistry/atoms", label: "Atoms" },
     { href: "/chemistry/molecules", label: "Molecules" },
     { href: "/chemistry/states", label: "States of Matter" },
+    { href: "/chemistry/ph-scale", label: "pH Scale" },
   ],
   biology: [
     { href: "/biology/cells", label: "Cells" },
@@ -25,5 +26,7 @@ export const topics = {
     { href: "/ict/cybersecurity", label: "Cybersecurity" },
     { href: "/ict/programming", label: "Programming" },
     { href: "/ict/logic-gates", label: "Logic Gates" },
+    { href: "/ict/ai", label: "AI" },
+    { href: "/ict/circuit-construction", label: "Circuit Construction" },
   ],
 };

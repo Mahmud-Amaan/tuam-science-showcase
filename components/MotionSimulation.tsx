@@ -572,15 +572,31 @@ export default function MotionSimulation({ language = "en" }: MotionSimulationPr
         <div className="flex flex-wrap items-center gap-4 mb-8">
           <button
             onClick={togglePlay}
-            className="flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 font-semibold"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                togglePlay()
+              }
+            }}
+            className="flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 font-semibold focus:outline-none focus:ring-4 focus:ring-blue-300 focus:scale-105"
+            tabIndex={0}
+            aria-label={isPlaying ? (language === "en" ? "Pause simulation" : "সিমুলেশন বিরতি") : (language === "en" ? "Play simulation" : "সিমুলেশন চালান")}
           >
             {isPlaying ? <Pause size={20} /> : <Play size={20} />}
             <span>{isPlaying ? (language === "en" ? "Pause" : "বিরতি") : (language === "en" ? "Play" : "চালান")}</span>
           </button>
 
-          <button 
-            onClick={resetAll} 
-            className="flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-gray-700 to-gray-800 text-white rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 font-semibold"
+          <button
+            onClick={resetAll}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                resetAll()
+              }
+            }}
+            className="flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-gray-700 to-gray-800 text-white rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 font-semibold focus:outline-none focus:ring-4 focus:ring-gray-400 focus:scale-105"
+            tabIndex={0}
+            aria-label={language === "en" ? "Reset simulation" : "সিমুলেশন রিসেট"}
           >
             <RotateCcw size={20} />
             <span>{language === "en" ? "Reset" : "রিসেট"}</span>
@@ -591,8 +607,16 @@ export default function MotionSimulation({ language = "en" }: MotionSimulationPr
             <select
               value={objectType}
               onChange={(e) => setObjectType(e.target.value as ObjectType)}
-              className="px-4 py-2 border-2 border-slate-300 rounded-lg bg-white font-medium text-slate-700 hover:border-blue-400 focus:border-blue-500 focus:outline-none transition-colors cursor-pointer"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  // Allow default select behavior
+                }
+              }}
+              className="px-4 py-2 border-2 border-slate-300 rounded-lg bg-white font-medium text-slate-700 hover:border-blue-400 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-colors cursor-pointer disabled:bg-slate-100 disabled:cursor-not-allowed"
               disabled={isPlaying}
+              tabIndex={0}
+              aria-label={language === "en" ? "Select object type" : "বস্তু প্রকার নির্বাচন"}
             >
               <option value="car">{language === "en" ? "🚗 Car" : "🚗 গাড়ি"}</option>
               <option value="ball">{language === "en" ? "⚽ Ball" : "⚽ বল"}</option>
@@ -624,18 +648,33 @@ export default function MotionSimulation({ language = "en" }: MotionSimulationPr
                   step={item.key === "t" ? 0.01 : 0.1}
                   value={item.value}
                   onChange={(e) => recalculatePhysics(item.key as any, Number(e.target.value))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                      // Allow default range slider behavior
+                    }
+                  }}
                   disabled={isPlaying}
-                  className="flex-1 h-3 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex-1 h-3 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-4 focus:ring-blue-300"
                   style={{
                     background: isPlaying ? '#cbd5e1' : `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((item.value - item.min) / (item.max - item.min)) * 100}%, #e2e8f0 ${((item.value - item.min) / (item.max - item.min)) * 100}%, #e2e8f0 100%)`
                   }}
+                  tabIndex={0}
+                  aria-label={`${item.label} slider`}
                 />
                 <input
                   type="number"
                   value={item.value.toFixed(item.key === "t" ? 2 : 1)}
                   onChange={(e) => recalculatePhysics(item.key as any, Number(e.target.value))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      // Allow default input behavior
+                    }
+                  }}
                   disabled={isPlaying}
-                  className="w-28 px-4 py-2 border-2 border-slate-300 rounded-lg text-right font-mono font-bold text-slate-700 focus:border-blue-500 focus:outline-none disabled:bg-slate-100 disabled:cursor-not-allowed"
+                  className="w-28 px-4 py-2 border-2 border-slate-300 rounded-lg text-right font-mono font-bold text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                  tabIndex={0}
+                  aria-label={`${item.label} number input`}
                 />
               </div>
             </div>

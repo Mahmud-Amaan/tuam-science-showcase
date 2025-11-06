@@ -6,8 +6,15 @@ import { ArrowLeft, Move, Loader2 } from "lucide-react"
 import Header from "@/components/Header"
 import AnimatedBackground from "@/components/AnimatedBackground"
 import Footer from "@/components/Footer"
-import MotionSimulation from "@/components/MotionSimulation"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
+import { createLazyComponent } from "@/components/ui/lazy-wrapper"
+
+const MotionSimulation = createLazyComponent(
+  () => import("@/components/MotionSimulation"),
+  () => <div className="min-h-[400px] flex items-center justify-center">
+    <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
+  </div>
+)
 
 export default function MotionPage() {
   const [language, setLanguage] = useState<"en" | "bn">("en")

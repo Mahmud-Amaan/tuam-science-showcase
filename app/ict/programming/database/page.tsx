@@ -1,11 +1,11 @@
 "use client"
 
-export default function NetworkingPage() {
+export default function DatabasePage() {
   return (
     <div className="h-screen w-full">
-      <iframe 
-        src="https://netsim.erinn.io/"
-        title="Network Simulator Interactive Tool"
+      <iframe
+        src="https://runsql.com/r"
+        title="RunSQL Database Editor"
         className="w-full h-full border-none"
         allowFullScreen
         allow="fullscreen"

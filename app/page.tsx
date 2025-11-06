@@ -10,13 +10,29 @@ import Features from "@/components/Features"
 import Benefits from "@/components/Benefits"
 import NCTB from "@/components/NCTB"
 import Footer from "@/components/Footer"
+import KeyboardShortcuts from "@/components/KeyboardShortcuts"
 
 export default function Home() {
   const [language, setLanguage] = useState<"en" | "bn">("en")
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
+  const handleShortcut = (action: string) => {
+    switch (action) {
+      case 'language-toggle':
+        setLanguage(language === "en" ? "bn" : "en")
+        break
+      case 'help':
+        // Could show help modal
+        break
+      case 'escape':
+        setMobileMenuOpen(false)
+        break
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
+      <KeyboardShortcuts language={language} onShortcut={handleShortcut} />
       <AnimatedBackground />
 
       <Header
@@ -25,7 +41,7 @@ export default function Home() {
         mobileMenuOpen={mobileMenuOpen}
         setMobileMenuOpen={setMobileMenuOpen}
       />
-      <main>
+      <main id="main-content">
         <HeroSection language={language} />
         <SubjectCards language={language} />
         <Features language={language} />

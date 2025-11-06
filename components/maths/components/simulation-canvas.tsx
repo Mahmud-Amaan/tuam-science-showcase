@@ -1060,8 +1060,16 @@ export default function SimulationCanvas({ simulation, language }: SimulationPro
                     type="number"
                     value={xInput}
                     onChange={(e) => setXInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        // Allow default input behavior
+                      }
+                    }}
                     step="0.1"
-                    className="w-full px-2 py-1 border border-emerald-300 rounded text-sm font-bold text-emerald-700 bg-emerald-50"
+                    className="w-full px-2 py-1 border border-emerald-300 rounded text-sm font-bold text-emerald-700 bg-emerald-50 focus:outline-none focus:ring-4 focus:ring-emerald-300"
+                    tabIndex={0}
+                    aria-label={language === 'en' ? 'X value input' : 'X মান ইনপুট'}
                   />
                   {calculatedY !== null && <div className="text-sm bg-emerald-100 text-emerald-900 font-bold px-2 py-0.5 rounded mt-1">Y = {calculatedY}</div>}
                 </div>
@@ -1098,7 +1106,14 @@ export default function SimulationCanvas({ simulation, language }: SimulationPro
                     step="0.05"
                     value={inputValues[key]}
                     onChange={(e) => handleInputChange(key, e.target.value)}
-                    className="w-full h-1.5 sm:h-2 bg-linear-to-r from-purple-300 to-blue-300 rounded"
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                        // Allow default range slider behavior
+                      }
+                    }}
+                    className="w-full h-1.5 sm:h-2 bg-linear-to-r from-purple-300 to-blue-300 rounded focus:outline-none focus:ring-4 focus:ring-purple-300"
+                    tabIndex={0}
+                    aria-label={`${getParameterLabel(key, language)} slider`}
                   />
                 </div>
               ))}

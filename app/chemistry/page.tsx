@@ -37,6 +37,14 @@ export default function ChemistryPage() {
       icon: "🔬",
       href: "/chemistry/molecules",
     },
+    {
+      titleEn: "pH Scale",
+      titleBn: "পিএইচ স্কেল",
+      descEn: "Explore acidity and basicity with interactive pH measurements",
+      descBn: "ইন্টারঅ্যাক্টিভ পিএইচ পরিমাপ সহ অম্লতা এবং ক্ষারত্ব অন্বেষণ করুন",
+      icon: "🧪",
+      href: "/chemistry/ph-scale",
+    },
   ]
 
   return (

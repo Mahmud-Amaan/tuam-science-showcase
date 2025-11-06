@@ -4,6 +4,7 @@ import * as React from 'react'
 import { Drawer as DrawerPrimitive } from 'vaul'
 
 import { cn } from '@/lib/utils'
+import { useAccessibility } from '@/hooks/useAccessibility'
 
 function Drawer({
   ...props
@@ -50,11 +51,21 @@ function DrawerContent({
   children,
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Content>) {
+  const { containerRef } = useAccessibility({
+    trapFocus: true,
+    restoreFocus: true,
+    announceOnOpen: 'Drawer opened',
+    announceOnClose: 'Drawer closed',
+  })
+
   return (
     <DrawerPortal data-slot="drawer-portal">
       <DrawerOverlay />
       <DrawerPrimitive.Content
+        ref={containerRef}
         data-slot="drawer-content"
+        role="dialog"
+        aria-modal="true"
         className={cn(
           'group/drawer-content bg-background fixed z-50 flex h-auto flex-col',
           'data-[vaul-drawer-direction=top]:inset-x-0 data-[vaul-drawer-direction=top]:top-0 data-[vaul-drawer-direction=top]:mb-24 data-[vaul-drawer-direction=top]:max-h-[80vh] data-[vaul-drawer-direction=top]:rounded-b-lg data-[vaul-drawer-direction=top]:border-b',

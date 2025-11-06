@@ -19,8 +19,8 @@ const HeroSection = ({ language }: HeroProps) => {
   }, [])
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-white via-blue-50/40 to-cyan-50/30 pt-20 pb-20">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-white via-blue-50/40 to-cyan-50/30 pt-20 pb-20" aria-labelledby="hero-heading">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-blue-400/20 to-cyan-300/15 rounded-full blur-3xl animate-float" />
         <div
           className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-tr from-green-400/20 to-blue-300/15 rounded-full blur-3xl animate-float"
@@ -45,14 +45,14 @@ const HeroSection = ({ language }: HeroProps) => {
       </div>
 
       <div className="relative z-20 max-w-5xl mx-auto px-4 text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-6 bg-white/80 backdrop-blur-md border border-blue-200/60 rounded-full shadow-lg hover:shadow-xl hover:shadow-blue-500/20 transition-all duration-300 transform hover:scale-105 animate-bounce-in">
-          <Zap size={14} className="text-blue-600 animate-pulse" />
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-6 bg-white/80 backdrop-blur-md border border-blue-200/60 rounded-full shadow-lg hover:shadow-xl hover:shadow-blue-500/20 transition-all duration-300 transform hover:scale-105 animate-bounce-in" role="banner" aria-label={language === "en" ? "Award-winning learning platform badge" : "পুরস্কার বিজয়ী শেখার প্ল্যাটফর্ম ব্যাজ"}>
+          <Zap size={14} className="text-blue-600 animate-pulse" aria-hidden="true" />
           <span className="text-xs font-medium bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
             {language === "en" ? "🏆 Award-winning Learning Platform" : "🏆 পুরস্কার বিজয়ী শেখার প্ল্যাটফর্ম"}
           </span>
         </div>
 
-        <h1 className="text-4xl md:text-5xl font-bold mb-4 leading-tight">
+        <h1 id="hero-heading" className="text-4xl md:text-5xl font-bold mb-4 leading-tight">
           <span className="block bg-gradient-to-r from-blue-600 via-cyan-600 to-green-600 bg-clip-text text-transparent animate-gradient pb-1">
             {language === "en" ? "Explore Science" : "বিজ্ঞান অন্বেষণ করুন"}
           </span>
@@ -70,7 +70,7 @@ const HeroSection = ({ language }: HeroProps) => {
             : "ইন্টারঅ্যাক্টিভ 3D সিমুলেশনের মাধ্যমে এনসিটিবি পাঠ্যক্রম ধারণা আয়ত্ত করুন। জটিল ঘটনা দেখুন এবং নিরাপদে পরীক্ষা করুন।"}
         </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto" role="navigation" aria-label={language === "en" ? "Subject navigation" : "বিষয় নেভিগেশন"}>
           {[
             {
               icon: Calculator,
@@ -130,31 +130,41 @@ const HeroSection = ({ language }: HeroProps) => {
               onClick={() => {
                 router.push(subject.route)
               }}
-              className={`group relative p-10 md:p-12 rounded-2xl bg-gradient-to-br ${subject.gradient} border-2 ${subject.borderGlow} cursor-pointer transform transition-all duration-500 hover:scale-110 hover:-translate-y-2 ${subject.glow} ${subject.hoverGlow} shadow-2xl overflow-hidden`}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  router.push(subject.route)
+                }
+              }}
+              className={`group relative p-10 md:p-12 rounded-2xl bg-gradient-to-br ${subject.gradient} border-2 ${subject.borderGlow} cursor-pointer transform transition-all duration-500 hover:scale-110 hover:-translate-y-2 ${subject.glow} ${subject.hoverGlow} shadow-2xl overflow-hidden focus:outline-none focus:ring-4 focus:ring-white/50 focus:scale-110 focus:-translate-y-2`}
               style={{ animation: `bounce-in 0.6s ease-out ${idx * 0.1}s backwards` }}
+              aria-label={`${language === "en" ? "Navigate to" : "যান"} ${subject.label} ${language === "en" ? "page" : "পৃষ্ঠা"} - ${subject.desc}`}
+              tabIndex={0}
             >
               {/* Animated background glow */}
               <div
                 className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${subject.gradient} opacity-0 group-hover:opacity-30 blur-2xl transition-opacity duration-500 -z-10 animate-pulse`}
+                aria-hidden="true"
               />
 
               {/* Shimmer effect */}
-              <div 
+              <div
                 className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
                 style={{
                   background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)",
                   backgroundSize: "200% 100%",
                   animation: "text-shimmer 3s ease-in-out infinite",
                 }}
+                aria-hidden="true"
               />
 
               {/* Animated border glow */}
-              <div className={`absolute inset-0 rounded-2xl border-2 ${subject.borderGlow} opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm`} />
+              <div className={`absolute inset-0 rounded-2xl border-2 ${subject.borderGlow} opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm`} aria-hidden="true" />
 
               {/* Content */}
               <div className="relative z-10 flex flex-col items-center justify-center">
-                <div className="mb-4 group-hover:scale-125 group-hover:rotate-12 transition-all duration-500 drop-shadow-2xl filter group-hover:drop-shadow-[0_0_30px_rgba(255,255,255,0.5)]">
-                  <IconComponent className="w-20 h-20 md:w-24 md:h-24 text-white" strokeWidth={1.5} />
+                <div className="mb-4 group-hover:scale-125 group-hover:rotate-12 transition-all duration-500 drop-shadow-2xl filter group-hover:drop-shadow-[0_0_30px_rgba(255,255,255,0.5)]" role="img" aria-label={`${subject.label} icon`}>
+                  <IconComponent className="w-20 h-20 md:w-24 md:h-24 text-white" strokeWidth={1.5} aria-hidden="true" />
                 </div>
                 <p className="text-2xl md:text-3xl font-bold text-white drop-shadow-lg mb-2 group-hover:drop-shadow-xl">
                   {subject.label}
@@ -165,7 +175,7 @@ const HeroSection = ({ language }: HeroProps) => {
               </div>
 
               {/* Floating particles effect on hover */}
-              <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+              <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none" aria-hidden="true">
                 {[...Array(6)].map((_, i) => (
                   <div
                     key={i}
@@ -182,7 +192,7 @@ const HeroSection = ({ language }: HeroProps) => {
               </div>
 
               {/* Bottom shine effect */}
-              <div className="absolute bottom-0 left-0 right-0 h-1/3 rounded-b-2xl bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="absolute bottom-0 left-0 right-0 h-1/3 rounded-b-2xl bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" aria-hidden="true" />
             </button>
             )
           })}

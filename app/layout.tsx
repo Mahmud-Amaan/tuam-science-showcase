@@ -3,14 +3,20 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
+import AIHelperPortal from "@/components/AIHelperPortal"
+import ServiceWorker from "@/components/ServiceWorker"
 
-const geist = Geist({ 
+const geist = Geist({
   subsets: ["latin"],
   variable: "--font-sans",
+  display: "swap",
+  preload: true,
 })
-const geistMono = Geist_Mono({ 
+const geistMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
+  display: "swap",
+  preload: true,
 })
 
 export const metadata: Metadata = {
@@ -51,8 +57,35 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Preload critical resources */}
+        <link rel="preload" href="/banner.jpg" as="image" type="image/jpeg" />
+        <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+        <link rel="dns-prefetch" href="//fonts.gstatic.com" />
+      </head>
       <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased`}>
+        {/* Skip Links for Accessibility */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 bg-blue-600 text-white px-4 py-2 rounded-md font-semibold focus:outline-none focus:ring-4 focus:ring-blue-300"
+        >
+          Skip to main content
+        </a>
+        <a
+          href="#navigation"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-32 focus:z-50 bg-green-600 text-white px-4 py-2 rounded-md font-semibold focus:outline-none focus:ring-4 focus:ring-green-300"
+        >
+          Skip to navigation
+        </a>
+        <a
+          href="#subject-cards"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-64 focus:z-50 bg-purple-600 text-white px-4 py-2 rounded-md font-semibold focus:outline-none focus:ring-4 focus:ring-purple-300"
+        >
+          Skip to subjects
+        </a>
         {children}
+        <AIHelperPortal />
+        <ServiceWorker />
         <Analytics />
       </body>
     </html>

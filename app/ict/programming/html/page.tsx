@@ -1,11 +1,11 @@
 "use client"
 
-export default function NetworkingPage() {
+export default function HTMLPage() {
   return (
     <div className="h-screen w-full">
-      <iframe 
-        src="https://netsim.erinn.io/"
-        title="Network Simulator Interactive Tool"
+      <iframe
+        src="https://playcode.io/html"
+        title="PlayCode HTML Editor"
         className="w-full h-full border-none"
         allowFullScreen
         allow="fullscreen"

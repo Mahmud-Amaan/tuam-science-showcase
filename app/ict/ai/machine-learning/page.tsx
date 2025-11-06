@@ -1,11 +1,11 @@
 "use client"
 
-export default function NetworkingPage() {
+export default function MachineLearningPage() {
   return (
     <div className="h-screen w-full">
       <iframe 
-        src="https://netsim.erinn.io/"
-        title="Network Simulator Interactive Tool"
+        src="https://simulators.yobee.co.in/"
+        title="Machine Learning Simulator"
         className="w-full h-full border-none"
         allowFullScreen
         allow="fullscreen"

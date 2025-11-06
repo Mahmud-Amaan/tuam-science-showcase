@@ -33,8 +33,17 @@ export default function MathSimulator() {
         <div className="absolute top-3 left-3 sm:top-6 sm:left-6 z-40 flex gap-2 sm:gap-3">
           <button
             onClick={() => setNavOpen(!navOpen)}
-            className="bg-gradient-to-br from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white p-2.5 sm:p-3 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center flex-shrink-0"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                setNavOpen(!navOpen)
+              }
+            }}
+            className="bg-gradient-to-br from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white p-2.5 sm:p-3 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center flex-shrink-0 focus:outline-none focus:ring-4 focus:ring-blue-300 focus:scale-110"
             title={language === "en" ? "Menu" : "মেনু"}
+            tabIndex={0}
+            aria-label={language === "en" ? "Toggle navigation menu" : "নেভিগেশন মেনু টগল"}
+            aria-expanded={navOpen}
           >
             <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -43,8 +52,17 @@ export default function MathSimulator() {
 
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="bg-gradient-to-br from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white p-2.5 sm:p-3 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center flex-shrink-0"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                setSidebarOpen(!sidebarOpen)
+              }
+            }}
+            className="bg-gradient-to-br from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white p-2.5 sm:p-3 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center flex-shrink-0 focus:outline-none focus:ring-4 focus:ring-amber-300 focus:scale-110"
             title={language === "en" ? "Guide" : "গাইড"}
+            tabIndex={0}
+            aria-label={language === "en" ? "Toggle guide sidebar" : "গাইড সাইডবার টগল"}
+            aria-expanded={sidebarOpen}
           >
             <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -81,11 +99,20 @@ export default function MathSimulator() {
                             setActiveSimulation(sim.id)
                             setNavOpen(false)
                           }}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              setActiveSimulation(sim.id)
+                              setNavOpen(false)
+                            }
+                          }}
+                          className={`w-full text-left px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all focus:outline-none focus:ring-4 focus:ring-blue-300 ${
                             activeSimulation === sim.id
                               ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
                               : "text-slate-700 hover:bg-slate-100"
                           }`}
+                          tabIndex={0}
+                          aria-label={`${language === "en" ? "Select" : "নির্বাচন"} ${sim.label[language]} ${language === "en" ? "simulation" : "সিমুলেশন"}`}
                         >
                           {sim.label[language]}
                         </button>
@@ -95,7 +122,15 @@ export default function MathSimulator() {
               ))}
               <button
                 onClick={() => setLanguage(language === "en" ? "bn" : "en")}
-                className="w-full px-3 py-2 rounded-lg bg-gradient-to-r from-indigo-100 to-blue-100 text-indigo-900 font-bold hover:from-indigo-200 hover:to-blue-200 text-xs sm:text-sm transition-all mt-2 sm:mt-4"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setLanguage(language === "en" ? "bn" : "en")
+                  }
+                }}
+                className="w-full px-3 py-2 rounded-lg bg-gradient-to-r from-indigo-100 to-blue-100 text-indigo-900 font-bold hover:from-indigo-200 hover:to-blue-200 text-xs sm:text-sm transition-all mt-2 sm:mt-4 focus:outline-none focus:ring-4 focus:ring-indigo-300"
+                tabIndex={0}
+                aria-label={language === "en" ? "Switch to Bangla language" : "ইংরেজি ভাষায় পরিবর্তন"}
               >
                 {language === "en" ? "বাংলা" : "English"}
               </button>

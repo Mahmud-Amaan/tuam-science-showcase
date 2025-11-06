@@ -1,11 +1,11 @@
 "use client"
 
-export default function NetworkingPage() {
+export default function PhScalePage() {
   return (
     <div className="h-screen w-full">
       <iframe 
-        src="https://netsim.erinn.io/"
-        title="Network Simulator Interactive Tool"
+        src="https://phet.colorado.edu/sims/html/ph-scale/latest/ph-scale_en.html"
+        title="PhET pH Scale Simulation"
         className="w-full h-full border-none"
         allowFullScreen
         allow="fullscreen"

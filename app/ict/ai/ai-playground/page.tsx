@@ -1,11 +1,11 @@
 "use client"
 
-export default function NetworkingPage() {
+export default function AIPlaygroundPage() {
   return (
     <div className="h-screen w-full">
       <iframe 
-        src="https://netsim.erinn.io/"
-        title="Network Simulator Interactive Tool"
+        src="https://console.groq.com/playground"
+        title="AI Playground - Groq Console"
         className="w-full h-full border-none"
         allowFullScreen
         allow="fullscreen"

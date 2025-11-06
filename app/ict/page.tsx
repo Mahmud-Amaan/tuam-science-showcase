@@ -22,22 +22,6 @@ export default function IctPage() {
       href: "/ict/computer-hardware",
     },
     {
-      titleEn: "Networking",
-      titleBn: "নেটওয়ার্কিং",
-      descEn: "Internet, protocols, and network security",
-      descBn: "ইন্টারনেট, প্রোটোকল এবং নেটওয়ার্ক নিরাপত্তা",
-      icon: "🌐",
-      href: "/ict/networking",
-    },
-    {
-      titleEn: "Cybersecurity",
-      titleBn: "সাইবার নিরাপত্তা",
-      descEn: "Protecting systems from cyber attacks",
-      descBn: "সাইবার আক্রমণ থেকে সিস্টেম রক্ষা করা",
-      icon: "🔒",
-      href: "/ict/cybersecurity",
-    },
-    {
       titleEn: "Programming",
       titleBn: "প্রোগ্রামিং",
       descEn: "Fundamentals of coding and software development",
@@ -52,6 +36,22 @@ export default function IctPage() {
       descBn: "ইন্টারেক্টিভ লজিক গেট সিমুলেশন",
       icon: "🔧",
       href: "/ict/logic-gates",
+    },
+    {
+      titleEn: "Circuit Construction",
+      titleBn: "সার্কিট নির্মাণ",
+      descEn: "Build and test DC circuits with virtual components",
+      descBn: "ভার্চুয়াল উপাদান দিয়ে ডিসি সার্কিট তৈরি এবং পরীক্ষা করুন",
+      icon: "⚡",
+      href: "/ict/circuit-construction",
+    },
+    {
+      titleEn: "Artificial Intelligence",
+      titleBn: "কৃত্রিম বুদ্ধিমত্তা",
+      descEn: "Machine learning, neural networks, and AI applications",
+      descBn: "মেশিন লার্নিং, নিউরাল নেটওয়ার্ক এবং এআই অ্যাপ্লিকেশন",
+      icon: "🤖",
+      href: "/ict/ai",
     },
   ]
 
