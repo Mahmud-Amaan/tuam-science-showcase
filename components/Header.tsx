@@ -20,7 +20,7 @@ const Header = ({ language, setLanguage, mobileMenuOpen, setMobileMenuOpen }: He
             </div>
             <div>
               <h1 className="text-lg font-bold text-primary hidden sm:block">
-                {language === "en" ? "NCTB Science" : "এনসিটিবি বিজ্ঞান"}
+                {language === "en" ? "Virtual Lab" : "ভার্চুয়াল ল্যাব"}
               </h1>
             </div>
           </div>
