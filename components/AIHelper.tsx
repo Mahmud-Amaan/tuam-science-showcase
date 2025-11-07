@@ -24,15 +24,28 @@ export default function AIHelper() {
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const resizeStartX = useRef(0)
   const resizeStartWidth = useRef(0)
+  const didLoadFromStorage = useRef(false)
 
   // Initialize component on client-side only
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  // Initialize messages after mounting
+  // Load messages from localStorage on first mount; if none, seed with greeting
   useEffect(() => {
     if (!mounted) return
+    if (didLoadFromStorage.current) return
+    try {
+      const saved = localStorage.getItem("ai_helper_messages_v1")
+      if (saved) {
+        const parsed: ChatMsg[] = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMessages(parsed)
+          didLoadFromStorage.current = true
+          return
+        }
+      }
+    } catch {}
     setMessages([
       {
         role: "bot",
@@ -43,8 +56,16 @@ export default function AIHelper() {
         time: Date.now(),
       },
     ])
-  }, [mounted, lang])
+    didLoadFromStorage.current = true
+  }, [mounted])
 
+  // Persist messages whenever they change
+  useEffect(() => {
+    if (!mounted) return
+    try {
+      localStorage.setItem("ai_helper_messages_v1", JSON.stringify(messages.slice(-200)))
+    } catch {}
+  }, [messages, mounted])
 
   useEffect(() => {
     if (!scrollRef.current) return
@@ -393,16 +414,8 @@ export default function AIHelper() {
           >
             <button
               onClick={() => {
+                try { localStorage.setItem("ai_helper_messages_v1", JSON.stringify(messages.slice(-200))) } catch {}
                 setLang((l) => (l === "en" ? "bn" : "en"))
-                setMessages([
-                  {
-                    role: "bot",
-                    text:
-                      lang === "en"
-                        ? "হ্যালো — সিমুলেশন সম্পর্কে প্রশ্ন করুন বা কমান্ড বলুন।"
-                        : "Hi — ask me about the simulations or say a command.",
-                  },
-                ])
               }}
               style={{
                 padding: "8px 14px",
@@ -428,16 +441,16 @@ export default function AIHelper() {
             </button>
             <button
               onClick={() => {
-                setMessages([
-                  {
-                    role: "bot",
-                    text:
-                      lang === "en"
-                        ? "Hi — ask me about the simulations or say a command (e.g. 'Go to Physics')."
-                        : "হ্যালো — সিমুলেশন সম্পর্কে প্রশ্ন করুন বা কমান্ড বলুন (যেমন: 'ফিজিক্স খোলা')।",
-                    time: Date.now(),
-                  },
-                ])
+                const seed: ChatMsg = {
+                  role: "bot",
+                  text:
+                    lang === "en"
+                      ? "Hi — ask me about the simulations or say a command (e.g. 'Go to Physics')."
+                      : "হ্যালো — সিমুলেশন সম্পর্কে প্রশ্ন করুন বা কমান্ড বলুন (যেমন: 'ফিজিক্স খোলা')।",
+                  time: Date.now(),
+                }
+                setMessages([seed])
+                try { localStorage.setItem("ai_helper_messages_v1", JSON.stringify([seed])) } catch {}
               }}
               style={{
                 padding: "8px 14px",
