@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import VoiceMode from "./VoiceMode";
 
 type ChatMsg = { role: "user" | "bot"; text: string; time?: number }
 type Intent = { type: "navigate" | "answer"; target?: string }
@@ -13,19 +14,16 @@ export default function AIHelper() {
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
   const [open, setOpen] = useState(false)
-  const [listening, setListening] = useState(false)
   const [speechToSpeechMode, setSpeechToSpeechMode] = useState(false)
+  const [isSpeaking, setIsSpeaking] = useState(false)
   const [lang, setLang] = useState<"en" | "bn">("en")
   const [messages, setMessages] = useState<ChatMsg[]>([])
   const [sidebarWidth, setSidebarWidth] = useState(420)
   const [isResizing, setIsResizing] = useState(false)
 
   const scrollRef = useRef<HTMLDivElement | null>(null)
-  const recogRef = useRef<any>(null)
   const resizeStartX = useRef(0)
   const resizeStartWidth = useRef(0)
-  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const interimTranscriptRef = useRef("")
 
   // Initialize component on client-side only
   useEffect(() => {
@@ -47,82 +45,6 @@ export default function AIHelper() {
     ])
   }, [mounted, lang])
 
-  // Setup speech recognition with continuous listening
-  useEffect(() => {
-    if (!mounted || typeof window === "undefined") return
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SpeechRecognition) {
-      recogRef.current = null
-      return
-    }
-    const recog = new SpeechRecognition()
-    recog.continuous = true  // Keep listening continuously
-    recog.interimResults = true  // Get interim results
-    recog.lang = lang === "bn" ? "bn-BD" : "en-US"
-    
-    recog.onresult = (e: any) => {
-      let interimTranscript = ""
-      let finalTranscript = ""
-
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const transcript = e.results[i][0].transcript
-        if (e.results[i].isFinal) {
-          finalTranscript += transcript
-        } else {
-          interimTranscript += transcript
-        }
-      }
-
-      interimTranscriptRef.current = interimTranscript
-
-      // If we got a final transcript, reset silence timer
-      if (finalTranscript.trim()) {
-        if (silenceTimerRef.current) {
-          clearTimeout(silenceTimerRef.current)
-        }
-
-        // Set a timer to detect when user stops speaking (2 seconds of silence)
-        silenceTimerRef.current = setTimeout(() => {
-          if (finalTranscript.trim() && speechToSpeechMode) {
-            handleSubmit(finalTranscript.trim(), true)
-            interimTranscriptRef.current = ""
-          }
-        }, 2000)
-      }
-    }
-    
-    recog.onerror = (e: any) => {
-      console.warn("SpeechRecognition error:", e)
-      if (e.error === "no-speech" && speechToSpeechMode) {
-        // Restart if in speech-to-speech mode and no speech detected
-        try {
-          recog.start()
-        } catch {}
-      } else if (e.error !== "aborted") {
-        setListening(false)
-        setSpeechToSpeechMode(false)
-      }
-    }
-    
-    recog.onend = () => {
-      // If speech-to-speech mode is still active, restart recognition
-      if (speechToSpeechMode) {
-        try {
-          recog.start()
-        } catch {}
-      } else {
-        setListening(false)
-      }
-    }
-    
-    recogRef.current = recog
-
-    return () => {
-      if (silenceTimerRef.current) {
-        clearTimeout(silenceTimerRef.current)
-      }
-    }
-  }, [mounted, lang, speechToSpeechMode])
 
   useEffect(() => {
     if (!scrollRef.current) return
@@ -161,67 +83,22 @@ export default function AIHelper() {
     }
   }, [isResizing])
 
-  const speak = (text: string) => {
-    if (!speechToSpeechMode) return  // Only speak in speech-to-speech mode
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return
-    
-    try {
-      window.speechSynthesis.cancel()  // Stop any ongoing speech
-      
-      const utter = new SpeechSynthesisUtterance(text)
-      utter.lang = lang === "bn" ? "bn-BD" : "en-US"
-      utter.rate = 0.95
-      utter.pitch = 1
-      
-      // Get voices and try to select appropriate one
-      const voices = window.speechSynthesis.getVoices()
-      if (lang === "bn") {
-        const banglaVoice = voices.find(v => v.lang.startsWith("bn"))
-        if (banglaVoice) utter.voice = banglaVoice
-      } else {
-        const englishVoice = voices.find(v => v.lang.startsWith("en"))
-        if (englishVoice) utter.voice = englishVoice
-      }
-      
-      window.speechSynthesis.speak(utter)
-    } catch (e) {
-      console.error("TTS failed:", e)
+  const speak = async (text: string): Promise<void> => {
+    if (!speechToSpeechMode) return
+
+    // Use the VoiceMode component's speak function
+    const voiceModeSpeak = (window as any).voiceModeSpeak
+    if (voiceModeSpeak) {
+      await voiceModeSpeak(text)
     }
   }
 
   const toggleSpeechToSpeech = () => {
-    if (typeof window === "undefined") return
-    
-    const recog = recogRef.current
-    if (!recog) {
-      alert("Speech recognition not supported in this browser. Use Chrome/Edge.")
-      return
-    }
+    setSpeechToSpeechMode(!speechToSpeechMode)
+  }
 
-    const newMode = !speechToSpeechMode
-    setSpeechToSpeechMode(newMode)
-
-    if (newMode) {
-      // Start continuous listening
-      try {
-        window.speechSynthesis.cancel()  // Stop any ongoing speech
-        recog.lang = lang === "bn" ? "bn-BD" : "en-US"
-        recog.start()
-        setListening(true)
-      } catch (e) {
-        console.error("recog start failed", e)
-      }
-    } else {
-      // Stop listening
-      try {
-        recog.stop()
-        window.speechSynthesis.cancel()
-      } catch {}
-      setListening(false)
-      if (silenceTimerRef.current) {
-        clearTimeout(silenceTimerRef.current)
-      }
-    }
+  const handleSpeechResult = (text: string) => {
+    handleSubmit(text, true)
   }
 
   async function fetchReply(text: string) {
@@ -264,8 +141,8 @@ export default function AIHelper() {
       return copy
     })
 
-    // Only speak if in speech-to-speech mode
-    speak(data.reply)
+    // Speak the response and wait for completion
+    await speak(data.reply)
 
     if (data.intent && data.intent.type === "navigate" && data.intent.target) {
       setTimeout(() => {
@@ -470,11 +347,7 @@ export default function AIHelper() {
               onClick={() => {
                 setOpen(false)
                 setSpeechToSpeechMode(false)
-                if (recogRef.current) {
-                  try {
-                    recogRef.current.stop()
-                  } catch {}
-                }
+                setIsSpeaking(false)
                 window.speechSynthesis.cancel()
               }}
               style={{
@@ -853,37 +726,53 @@ export default function AIHelper() {
                 fontWeight: 600, 
                 textAlign: "center" 
               }}>
-                {lang === "en" ? "Listening..." : "শুনছি..."}
+                {isSpeaking 
+                  ? (lang === "en" ? "Speaking..." : "বলছি...") 
+                  : (lang === "en" ? "Listening..." : "শুনছি...")}
               </div>
               <div style={{ 
                 fontSize: "13px", 
                 opacity: 0.9,
                 textAlign: "center" 
               }}>
-                {lang === "en" ? "Speak your question" : "আপনার প্রশ্ন বলুন"}
+                {isSpeaking 
+                  ? (lang === "en" ? "Please wait..." : "অনুগ্রহ করে অপেক্ষা করুন...") 
+                  : (lang === "en" ? "Speak your question" : "আপনার প্রশ্ন বলুন")}
               </div>
-              <div style={{ 
-                display: "flex", 
-                gap: "4px",
-                marginTop: "4px"
-              }}>
-                {[0, 1, 2].map((i) => (
-                  <div
-                    key={i}
-                    style={{
-                      width: "6px",
-                      height: "24px",
-                      background: "white",
-                      borderRadius: "3px",
-                      animation: `pulse 1s infinite ${i * 0.2}s`,
-                    }}
-                  />
-                ))}
-              </div>
+              {!isSpeaking && (
+                <div style={{ 
+                  display: "flex", 
+                  gap: "4px",
+                  marginTop: "4px"
+                }}>
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      key={i}
+                      style={{
+                        width: "6px",
+                        height: "24px",
+                        background: "white",
+                        borderRadius: "3px",
+                        animation: `pulse 1s infinite ${i * 0.2}s`,
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
       )}
+
+      {/* Voice Mode Component */}
+      <VoiceMode
+        speechToSpeechMode={speechToSpeechMode}
+        lang={lang}
+        onSpeechResult={handleSpeechResult}
+        onToggleMode={toggleSpeechToSpeech}
+        isSpeaking={isSpeaking}
+        setIsSpeaking={setIsSpeaking}
+      />
 
       {/* Overlay */}
       {open && (
@@ -891,11 +780,7 @@ export default function AIHelper() {
           onClick={() => {
             setOpen(false)
             setSpeechToSpeechMode(false)
-            if (recogRef.current) {
-              try {
-                recogRef.current.stop()
-              } catch {}
-            }
+            setIsSpeaking(false)
             window.speechSynthesis.cancel()
           }}
           style={{
