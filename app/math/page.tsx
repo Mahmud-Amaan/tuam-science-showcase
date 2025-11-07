@@ -19,6 +19,15 @@ export default function MathPage() {
       descEn: "Calculate Graphs of Multiple Functions Easily",
       descBn: "একাধিক ফাংশনের গ্রাফ সহজেই গণনা করুন",
       icon: "📈",
+      route: "/math/graphs",
+    },
+    {
+      titleEn: "Vector Addition",
+      titleBn: "ভেক্টর সংযোজন",
+      descEn: "Explore vector addition interactively",
+      descBn: "ইন্টারঅ্যাক্টিভভাবে ভেক্টর সংযোজন অন্বেষণ করুন",
+      icon: "🧭",
+      route: "/math/vector",
     },
   ]
 
@@ -73,7 +82,7 @@ export default function MathPage() {
               {topics.map((topic, idx) => (
                 <div
                   key={idx}
-                  onClick={() => router.push('/math/graphs')}
+                  onClick={() => topic.route && router.push(topic.route)}
                   className="group relative p-8 rounded-2xl bg-white border-2 border-amber-200 hover:border-amber-400 transition-all duration-300 hover:shadow-xl hover:shadow-amber-500/20 transform hover:-translate-y-2 cursor-pointer"
                 >
                   <div className="text-5xl mb-4 text-center">{topic.icon}</div>
