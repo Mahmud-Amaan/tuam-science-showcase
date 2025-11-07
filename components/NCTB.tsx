@@ -20,7 +20,7 @@ const NCTB = ({ language }: NCTBProps) => {
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <h2 id="nctb-heading" className="text-4xl md:text-5xl font-bold mb-4 text-foreground">
-            {language === "en" ? "NCTB Curriculum Aligned" : "এনসিটিবি পাঠ্যক্রম সামঞ্জস্যপূর্ণ"}
+            {language === "en" ? "National Curriculum Aligned" : "জাতীয় পাঠ্যক্রম সামঞ্জস্যপূর্ণ"}
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             {language === "en"

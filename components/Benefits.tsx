@@ -41,7 +41,7 @@ const Benefits = ({ language }: BenefitsProps) => {
     <section className="py-20 px-4 bg-gradient-to-r from-primary/5 via-secondary/5 to-accent/5" aria-labelledby="benefits-heading">
       <div className="max-w-7xl mx-auto">
         <h2 id="benefits-heading" className="text-4xl md:text-5xl font-bold text-center mb-16 text-foreground">
-          {language === "en" ? "Why NCTB Science Simulator?" : "কেন এনসিটিবি বিজ্ঞান সিমুলেটর?"}
+          {language === "en" ? "Why Virtual Lab?" : "কেন ভার্চুয়াল ল্যাব?"}
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">

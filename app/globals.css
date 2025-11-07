@@ -70,7 +70,7 @@
 }
 
 :root {
-  /* Updated theme for NCTB Science Simulator - vibrant educational colors */
+  /* Updated theme for Virtual Lab - vibrant educational colors */
   --background: oklch(0.98 0 0);
   --foreground: oklch(0.15 0 0);
   --card: oklch(1 0 0);
