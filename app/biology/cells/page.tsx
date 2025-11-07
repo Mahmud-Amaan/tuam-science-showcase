@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Microscope, ArrowLeft } from "lucide-react"
 import Header from "@/components/Header"
-import AnimatedBackground from "@/components/AnimatedBackground"
+
 import Footer from "@/components/Footer"
 
 export default function CellsPage() {
@@ -73,7 +73,7 @@ export default function CellsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <AnimatedBackground />
+      
       <Header
         language={language}
         setLanguage={setLanguage}

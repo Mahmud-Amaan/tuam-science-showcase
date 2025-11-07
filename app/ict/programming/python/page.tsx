@@ -4,7 +4,7 @@ export default function PythonPage() {
   return (
     <div className="h-screen w-full">
       <iframe
-        src="https://python-playground.netlify.app/#ewAiAG0AYQBpAG4ALgBwAHkAIgA6ACIAcAByAGkAbgB0ACgAJwBIAGUAbABsAG8AIABXAG8AcgBsAGQAIQAnACkAIgB9AA=="
+        src="https://www.onlineide.pro/playground/python"
         title="Python Playground"
         className="w-full h-full border-none"
         allowFullScreen

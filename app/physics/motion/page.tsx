@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Move, Loader2 } from "lucide-react"
 import Header from "@/components/Header"
-import AnimatedBackground from "@/components/AnimatedBackground"
+
 import Footer from "@/components/Footer"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { createLazyComponent } from "@/components/ui/lazy-wrapper"
@@ -30,7 +30,7 @@ export default function MotionPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <AnimatedBackground />
+      
       <Header
         language={language}
         setLanguage={setLanguage}

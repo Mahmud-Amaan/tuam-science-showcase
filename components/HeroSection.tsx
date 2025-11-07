@@ -1,68 +1,95 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronRight, Zap, Calculator, Atom, FlaskConical, Leaf, Laptop } from "lucide-react"
+import { useRef, useState, useEffect } from "react"
+import { Zap, Calculator, Atom, FlaskConical, Leaf, Laptop } from "lucide-react"
 
 interface HeroProps {
   language: "en" | "bn"
 }
 
 const HeroSection = ({ language }: HeroProps) => {
-  const [scrollY, setScrollY] = useState(0)
   const router = useRouter()
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [videoLoaded, setVideoLoaded] = useState(false)
+  const [videoError, setVideoError] = useState(false)
 
   useEffect(() => {
-    const handleScroll = () => setScrollY(window.scrollY)
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
+    const video = videoRef.current
+    if (!video) return
+
+    const handleLoadStart = () => {
+      setVideoLoaded(false)
+    }
+
+    const handleCanPlay = () => {
+      setVideoLoaded(true)
+      setVideoError(false)
+    }
+
+    const handleError = () => {
+      setVideoError(true)
+      setVideoLoaded(true)
+    }
+
+    video.addEventListener("loadstart", handleLoadStart)
+    video.addEventListener("canplay", handleCanPlay)
+    video.addEventListener("error", handleError)
+
+    return () => {
+      video.removeEventListener("loadstart", handleLoadStart)
+      video.removeEventListener("canplay", handleCanPlay)
+      video.removeEventListener("error", handleError)
+    }
   }, [])
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-white via-blue-50/40 to-cyan-50/30 pt-20 pb-20" aria-labelledby="hero-heading">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-blue-400/20 to-cyan-300/15 rounded-full blur-3xl animate-float" />
-        <div
-          className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-tr from-green-400/20 to-blue-300/15 rounded-full blur-3xl animate-float"
-          style={{ animationDelay: "1s" }}
+    <section
+      className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20 pb-20 bg-black"
+      aria-labelledby="hero-heading"
+    >
+      {/* Video Background */}
+      <div className="absolute inset-0 w-full h-full">
+        <video
+          ref={videoRef}
+          src="/background.mp4"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1920 1080'%3E%3Crect fill='%23000000' width='1920' height='1080'/%3E%3C/svg%3E"
+          className="absolute top-1/2 left-1/2 w-full h-full min-w-full min-h-full -translate-x-1/2 -translate-y-1/2 object-cover"
+          title="Background video"
         />
-        <div
-          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-gradient-to-br from-cyan-300/15 to-transparent rounded-full blur-3xl animate-pulse"
-          style={{ animationDuration: "4s" }}
-        />
-        {[...Array(6)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-2 h-2 bg-blue-400/30 rounded-full"
-            style={{
-              left: `${20 + i * 15}%`,
-              top: `${30 + (i % 3) * 20}%`,
-              animation: `float ${3 + i}s ease-in-out infinite`,
-              animationDelay: `${i * 0.2}s`,
-            }}
-          />
-        ))}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black/60" />
       </div>
 
+      {videoError && <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-black to-black" />}
+
       <div className="relative z-20 max-w-5xl mx-auto px-4 text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-6 bg-white/80 backdrop-blur-md border border-blue-200/60 rounded-full shadow-lg hover:shadow-xl hover:shadow-blue-500/20 transition-all duration-300 transform hover:scale-105 animate-bounce-in" role="banner" aria-label={language === "en" ? "Award-winning learning platform badge" : "পুরস্কার বিজয়ী শেখার প্ল্যাটফর্ম ব্যাজ"}>
+        <div
+          className="inline-flex items-center gap-2 px-3 py-1.5 mb-6 backdrop-blur-lg  rounded-full shadow-xl hover:shadow-2xl hover:shadow-blue-500/30 transition-all duration-300 transform hover:scale-105 animate-bounce-in"
+          role="banner"
+          aria-label={language === "en" ? "Award-winning learning platform badge" : "পুরস্কার বিজয়ী শেখার প্ল্যাটফর্ম ব্যাজ"}
+        >
           <Zap size={14} className="text-blue-600 animate-pulse" aria-hidden="true" />
-          <span className="text-xs font-medium bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+          <span className="text-xs font-medium bg-linear-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
             {language === "en" ? "🏆 Award-winning Learning Platform" : "🏆 পুরস্কার বিজয়ী শেখার প্ল্যাটফর্ম"}
           </span>
         </div>
 
         <h1 id="hero-heading" className="text-4xl md:text-5xl font-bold mb-4 leading-tight">
-          <span className="block bg-gradient-to-r from-blue-600 via-cyan-600 to-green-600 bg-clip-text text-transparent animate-gradient pb-1">
+          <span className="block bg-linear-to-r from-blue-600 via-cyan-600 to-green-600 bg-clip-text text-transparent animate-gradient pb-1">
             {language === "en" ? "Explore Science" : "বিজ্ঞান অন্বেষণ করুন"}
           </span>
-          <span className="block bg-gradient-to-r from-green-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent animate-gradient">
+          <span className="block bg-linear-to-r from-green-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent animate-gradient">
             {language === "en" ? "Like Never Before" : "আগের চেয়ে ভিন্নভাবে"}
           </span>
         </h1>
 
         <p
-          className="text-sm md:text-base text-slate-700 mb-16 max-w-2xl mx-auto leading-relaxed font-medium animate-slide-up"
+          className="text-sm md:text-base text-white/90 mb-16 max-w-2xl mx-auto leading-relaxed font-medium animate-slide-up drop-shadow-lg"
           style={{ animationDelay: "0.2s" }}
         >
           {language === "en"
@@ -70,7 +97,11 @@ const HeroSection = ({ language }: HeroProps) => {
             : "ইন্টারঅ্যাক্টিভ 3D সিমুলেশনের মাধ্যমে এনসিটিবি পাঠ্যক্রম ধারণা আয়ত্ত করুন। জটিল ঘটনা দেখুন এবং নিরাপদে পরীক্ষা করুন।"}
         </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto" role="navigation" aria-label={language === "en" ? "Subject navigation" : "বিষয় নেভিগেশন"}>
+        <div
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto"
+          role="navigation"
+          aria-label={language === "en" ? "Subject navigation" : "বিষয় নেভিগেশন"}
+        >
           {[
             {
               icon: Calculator,
@@ -125,75 +156,70 @@ const HeroSection = ({ language }: HeroProps) => {
           ].map((subject, idx) => {
             const IconComponent = subject.icon
             return (
-            <button
-              key={idx}
-              onClick={() => {
-                router.push(subject.route)
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
+              <button
+                key={idx}
+                onClick={() => {
                   router.push(subject.route)
-                }
-              }}
-              className={`group relative p-10 md:p-12 rounded-2xl bg-gradient-to-br ${subject.gradient} border-2 ${subject.borderGlow} cursor-pointer transform transition-all duration-500 hover:scale-110 hover:-translate-y-2 ${subject.glow} ${subject.hoverGlow} shadow-2xl overflow-hidden focus:outline-none focus:ring-4 focus:ring-white/50 focus:scale-110 focus:-translate-y-2`}
-              style={{ animation: `bounce-in 0.6s ease-out ${idx * 0.1}s backwards` }}
-              aria-label={`${language === "en" ? "Navigate to" : "যান"} ${subject.label} ${language === "en" ? "page" : "পৃষ্ঠা"} - ${subject.desc}`}
-              tabIndex={0}
-            >
-              {/* Animated background glow */}
-              <div
-                className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${subject.gradient} opacity-0 group-hover:opacity-30 blur-2xl transition-opacity duration-500 -z-10 animate-pulse`}
-                aria-hidden="true"
-              />
-
-              {/* Shimmer effect */}
-              <div
-                className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                style={{
-                  background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)",
-                  backgroundSize: "200% 100%",
-                  animation: "text-shimmer 3s ease-in-out infinite",
                 }}
-                aria-hidden="true"
-              />
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault()
+                    router.push(subject.route)
+                  }
+                }}
+                className={`group relative p-10 md:p-12 rounded-2xl bg-gradient-to-br ${subject.gradient} border-2 ${subject.borderGlow} cursor-pointer transform transition-all duration-500 hover:scale-110 hover:-translate-y-2 ${subject.glow} ${subject.hoverGlow} shadow-2xl overflow-hidden focus:outline-none focus:ring-4 focus:ring-white/50 focus:scale-110 focus:-translate-y-2`}
+                style={{ animation: `bounce-in 0.6s ease-out ${idx * 0.1}s backwards` }}
+                aria-label={`${language === "en" ? "Navigate to" : "যান"} ${subject.label} ${language === "en" ? "page" : "পৃষ্ঠা"} - ${subject.desc}`}
+                tabIndex={0}
+              >
+                {/* Animated border glow */}
+                <div
+                  className={`absolute inset-0 rounded-2xl border-2 ${subject.borderGlow} opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm`}
+                  aria-hidden="true"
+                />
 
-              {/* Animated border glow */}
-              <div className={`absolute inset-0 rounded-2xl border-2 ${subject.borderGlow} opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm`} aria-hidden="true" />
-
-              {/* Content */}
-              <div className="relative z-10 flex flex-col items-center justify-center">
-                <div className="mb-4 group-hover:scale-125 group-hover:rotate-12 transition-all duration-500 drop-shadow-2xl filter group-hover:drop-shadow-[0_0_30px_rgba(255,255,255,0.5)]" role="img" aria-label={`${subject.label} icon`}>
-                  <IconComponent className="w-20 h-20 md:w-24 md:h-24 text-white" strokeWidth={1.5} aria-hidden="true" />
-                </div>
-                <p className="text-2xl md:text-3xl font-bold text-white drop-shadow-lg mb-2 group-hover:drop-shadow-xl">
-                  {subject.label}
-                </p>
-                <p className="text-sm md:text-base text-white/90 drop-shadow-md font-medium">
-                  {subject.desc}
-                </p>
-              </div>
-
-              {/* Floating particles effect on hover */}
-              <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none" aria-hidden="true">
-                {[...Array(6)].map((_, i) => (
+                {/* Content */}
+                <div className="relative z-10 flex flex-col items-center justify-center">
                   <div
-                    key={i}
-                    className={`absolute w-2 h-2 bg-white/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
-                    style={{
-                      left: `${20 + i * 15}%`,
-                      top: `${20 + (i % 3) * 25}%`,
-                      animation: `float ${2 + i * 0.3}s ease-in-out infinite`,
-                      animationDelay: `${i * 0.1}s`,
-                      transition: "all 0.5s ease",
-                    }}
-                  />
-                ))}
-              </div>
+                    className="mb-4 group-hover:scale-125 group-hover:rotate-12 transition-all duration-500 drop-shadow-2xl filter group-hover:drop-shadow-[0_0_30px_rgba(255,255,255,0.5)]"
+                    role="img"
+                    aria-label={`${subject.label} icon`}
+                  >
+                    <IconComponent
+                      className="w-20 h-20 md:w-24 md:h-24 text-white"
+                      strokeWidth={1.5}
+                      aria-hidden="true"
+                    />
+                  </div>
+                  <p className="text-2xl md:text-3xl font-bold text-white drop-shadow-lg mb-2 group-hover:drop-shadow-xl">
+                    {subject.label}
+                  </p>
+                  <p className="text-sm md:text-base text-white/90 drop-shadow-md font-medium">{subject.desc}</p>
+                </div>
 
-              {/* Bottom shine effect */}
-              <div className="absolute bottom-0 left-0 right-0 h-1/3 rounded-b-2xl bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" aria-hidden="true" />
-            </button>
+                {/* Floating particles effect on hover */}
+                <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none" aria-hidden="true">
+                  {[...Array(6)].map((_, i) => (
+                    <div
+                      key={i}
+                      className={`absolute w-2 h-2 bg-white/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
+                      style={{
+                        left: `${20 + i * 15}%`,
+                        top: `${20 + (i % 3) * 25}%`,
+                        animation: `float ${2 + i * 0.3}s ease-in-out infinite`,
+                        animationDelay: `${i * 0.1}s`,
+                        transition: "all 0.5s ease",
+                      }}
+                    />
+                  ))}
+                </div>
+
+                {/* Bottom shine effect */}
+                <div
+                  className="absolute bottom-0 left-0 right-0 h-1/3 rounded-b-2xl bg-linear-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  aria-hidden="true"
+                />
+              </button>
             )
           })}
         </div>

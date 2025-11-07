@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Calculator, ArrowLeft, BookOpen, BarChart3, Sparkles } from "lucide-react"
 import Header from "@/components/Header"
-import AnimatedBackground from "@/components/AnimatedBackground"
+
 import Footer from "@/components/Footer"
 
 export default function MathPage() {
@@ -33,7 +33,7 @@ export default function MathPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <AnimatedBackground />
+      
       <Header
         language={language}
         setLanguage={setLanguage}

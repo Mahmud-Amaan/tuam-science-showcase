@@ -2,9 +2,7 @@
 
 import { useState } from "react"
 import Header from "@/components/Header"
-import AnimatedBackground from "@/components/AnimatedBackground"
 import HeroSection from "@/components/HeroSection"
-import Stats from "@/components/Stats"
 import SubjectCards from "@/components/SubjectCards"
 import Features from "@/components/Features"
 import Benefits from "@/components/Benefits"
@@ -33,7 +31,6 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       <KeyboardShortcuts language={language} onShortcut={handleShortcut} />
-      <AnimatedBackground />
 
       <Header
         language={language}
@@ -43,7 +40,6 @@ export default function Home() {
       />
       <main id="main-content">
         <HeroSection language={language} />
-        <SubjectCards language={language} />
         <Features language={language} />
         <Benefits language={language} />
         <NCTB language={language} />

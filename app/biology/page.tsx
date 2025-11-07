@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Leaf, ArrowLeft, Dna, Microscope, Heart } from "lucide-react"
 import Header from "@/components/Header"
-import AnimatedBackground from "@/components/AnimatedBackground"
+
 import Footer from "@/components/Footer"
 
 export default function BiologyPage() {
@@ -49,7 +49,7 @@ export default function BiologyPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <AnimatedBackground />
+      
       <Header
         language={language}
         setLanguage={setLanguage}

@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Brain, ArrowLeft, Network, TrendingUp, Sparkles } from "lucide-react"
 import Header from "@/components/Header"
-import AnimatedBackground from "@/components/AnimatedBackground"
+
 import Footer from "@/components/Footer"
 
 export default function AIPage() {
@@ -29,19 +29,11 @@ export default function AIPage() {
       icon: "🤖",
       href: "/ict/ai/machine-learning",
     },
-    {
-      titleEn: "AI Playground",
-      titleBn: "এআই প্লেগ্রাউন্ড",
-      descEn: "Interactive AI experiments and demonstrations",
-      descBn: "ইন্টারেক্টিভ এআই পরীক্ষা এবং প্রদর্শন",
-      icon: "✨",
-      href: "/ict/ai/ai-playground",
-    },
   ]
 
   return (
     <div className="min-h-screen bg-background">
-      <AnimatedBackground />
+      
       <Header
         language={language}
         setLanguage={setLanguage}
