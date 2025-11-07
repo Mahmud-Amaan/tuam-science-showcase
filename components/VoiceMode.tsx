@@ -87,18 +87,19 @@ export default function VoiceMode({
       }
     }
 
-    recog.onend = () => {
-      if (speechToSpeechMode && !isSpeaking) {
-        try {
-          recog.start()
-          setListening(true)
-        } catch (e) {
-          console.error("Failed to restart recognition:", e)
-        }
-      } else {
-        setListening(false)
-      }
+recog.onend = () => {
+  if (speechToSpeechMode && !isSpeaking) {
+    try {
+      recog.start()
+      setListening(true)
+    } catch (e) {
+      console.error("Failed to restart recognition:", e)
     }
+  } else {
+    setListening(false)
+  }
+}
+
 
     recogRef.current = recog
 
