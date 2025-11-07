@@ -93,8 +93,8 @@ const HeroSection = ({ language }: HeroProps) => {
           style={{ animationDelay: "0.2s" }}
         >
           {language === "en"
-            ? "Master NCTB curriculum concepts through interactive 3D simulations. Visualize complex phenomena, experiment safely, and transform your learning experience."
-            : "ইন্টারঅ্যাক্টিভ 3D সিমুলেশনের মাধ্যমে এনসিটিবি পাঠ্যক্রম ধারণা আয়ত্ত করুন। জটিল ঘটনা দেখুন এবং নিরাপদে পরীক্ষা করুন।"}
+            ? "National curriculum concepts through interactive 3D simulations. Easy Learning and Visualize complex phenomena, experiment safely, and enhance your learning experience."
+            : "ইন্টারেক্টিভ 3D সিমুলেশনের মাধ্যমে জাতীয় পাঠ্যক্রমের ধারণা। সহজে শেখা এবং জটিল ঘটনা কল্পনা করা, নিরাপদে পরীক্ষা করা এবং আপনার শেখার অভিজ্ঞতা উন্নত করা।"}
         </p>
 
         <div
