@@ -67,7 +67,7 @@ const HeroSection = ({ language }: HeroProps) => {
 
       {videoError && <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-black to-black" />}
 
-      <div className="relative z-20 max-w-5xl mx-auto px-4 text-center">
+      <div className="relative z-20 mx-auto px-4 text-center">
         <div
           className="inline-flex items-center gap-2 px-3 py-1.5 mb-6 backdrop-blur-lg  rounded-full shadow-xl hover:shadow-2xl hover:shadow-blue-500/30 transition-all duration-300 transform hover:scale-105 animate-bounce-in"
           role="banner"
@@ -98,7 +98,7 @@ const HeroSection = ({ language }: HeroProps) => {
         </p>
 
         <div
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto"
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-6 mx-auto"
           role="navigation"
           aria-label={language === "en" ? "Subject navigation" : "বিষয় নেভিগেশন"}
         >

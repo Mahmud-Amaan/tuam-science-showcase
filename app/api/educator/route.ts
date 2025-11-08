@@ -140,7 +140,7 @@ const navigationData = [
 // Initialize Fuse.js
 const fuse = new Fuse(navigationData, {
   keys: ["name"],
-  threshold: 0.3,
+  threshold: 0.5,
   includeScore: true,
 });
 
@@ -149,8 +149,8 @@ const navCommands = ["go to", "open", "show", "খোলা", "যাও", "দ�
 function detectNavigationFuzzy(message: string) {
   const lower = message.toLowerCase();
 
-  // Only proceed if explicit navigation command OR message is very short (like one word)
-  const isCommand = navCommands.some(cmd => lower.includes(cmd)) || lower.trim().split(" ").length <= 2;
+  // Only proceed if explicit navigation command (not short random words)
+  const isCommand = navCommands.some(cmd => lower.startsWith(cmd + " "));
 
   if (!isCommand) return null;
 
@@ -164,7 +164,7 @@ function detectNavigationFuzzy(message: string) {
   }
 
   const result = fuse.search(searchTerm);
-  if (result.length > 0 && result[0].score! < 0.4) {
+  if (result.length > 0 && result[0].score! < 0.5) {
     return { type: "navigate", target: result[0].item.url };
   }
 
