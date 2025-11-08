@@ -31,7 +31,7 @@ export default function ChemistryPage() {
     },
     {
       titleEn: "Molecules",
-      titleBn: "আণু",
+      titleBn: "অণু",
       descEn: "Explore molecular shapes and VSEPR geometry",
       descBn: "আণুগত আকৃতি এবং VSEPR জ্যামিতি অন্বেষণ",
       icon: "🔬",

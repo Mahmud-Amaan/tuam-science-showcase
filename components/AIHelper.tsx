@@ -5,7 +5,13 @@ import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import VoiceMode from "./VoiceMode";
+
+declare global {
+  interface Window {
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
+  }
+}
 
 type ChatMsg = { role: "user" | "bot"; text: string; time?: number }
 type Intent = { type: "navigate" | "answer"; target?: string }
@@ -15,26 +21,25 @@ export default function AIHelper() {
   const [mounted, setMounted] = useState(false)
   const [open, setOpen] = useState(false)
   const [speechToSpeechMode, setSpeechToSpeechMode] = useState(false)
-  const [isSpeaking, setIsSpeaking] = useState(false)
   const [lang, setLang] = useState<"en" | "bn">("en")
   const [messages, setMessages] = useState<ChatMsg[]>([])
   const [sidebarWidth, setSidebarWidth] = useState(420)
   const [isResizing, setIsResizing] = useState(false)
+  const [listening, setListening] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const resizeStartX = useRef(0)
   const resizeStartWidth = useRef(0)
   const didLoadFromStorage = useRef(false)
 
+  const recogRef = useRef<any>(null)
+
   // Initialize component on client-side only
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  useEffect(() => { setMounted(true) }, [])
 
   // Load messages from localStorage on first mount; if none, seed with greeting
   useEffect(() => {
-    if (!mounted) return
-    if (didLoadFromStorage.current) return
+    if (!mounted || didLoadFromStorage.current) return
     try {
       const saved = localStorage.getItem("ai_helper_messages_v1")
       if (saved) {
@@ -46,25 +51,20 @@ export default function AIHelper() {
         }
       }
     } catch {}
-    setMessages([
-      {
-        role: "bot",
-        text:
-          lang === "en"
-            ? "Hi — ask me about the simulations or say a command (e.g. 'Go to Physics')."
-            : "হ্যালো — সিমুলেশন সম্পর্কে প্রশ্ন করুন বা কমান্ড বলুন (যেমন: 'ফিজিক্স খোলা')।",
-        time: Date.now(),
-      },
-    ])
+    setMessages([{
+      role: "bot",
+      text: lang === "en"
+        ? "Hi — ask me about the simulations or say a command (e.g. 'Go to Physics')."
+        : "হ্যালো — সিমুলেশন সম্পর্কে প্রশ্ন করুন বা কমান্ড বলুন (যেমন: 'ফিজিক্স খোলা')।",
+      time: Date.now(),
+    }])
     didLoadFromStorage.current = true
   }, [mounted])
 
   // Persist messages whenever they change
   useEffect(() => {
     if (!mounted) return
-    try {
-      localStorage.setItem("ai_helper_messages_v1", JSON.stringify(messages.slice(-200)))
-    } catch {}
+    try { localStorage.setItem("ai_helper_messages_v1", JSON.stringify(messages.slice(-200))) } catch {}
   }, [messages, mounted])
 
   useEffect(() => {
@@ -104,24 +104,81 @@ export default function AIHelper() {
     }
   }, [isResizing])
 
-  const speak = async (text: string): Promise<void> => {
-    if (!speechToSpeechMode) return
+  // ---- MIC CONTROL LOGIC ----
 
-    // Use the VoiceMode component's speak function
-    const voiceModeSpeak = (window as any).voiceModeSpeak
-    if (voiceModeSpeak) {
-      await voiceModeSpeak(text)
+  const startMic = () => {
+    if (listening) return;
+
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Speech recognition not supported.");
+      return;
+    }
+
+    const recog = new SpeechRecognition();
+    recog.continuous = true;
+    recog.interimResults = false;
+    recog.lang = lang === "bn" ? "bn-BD" : "en-US";
+
+    // Reset transcript
+    (recogRef as any).currentTranscript = "";
+
+    recog.onstart = () => setListening(true);
+
+    recog.onresult = (event: any) => {
+      let transcript = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          transcript += event.results[i][0].transcript;
+        }
+      }
+
+      transcript = transcript.trim();
+      if (transcript && transcript !== (recogRef as any).currentTranscript) {
+        (recogRef as any).currentTranscript = transcript; // store current to prevent repeats
+        handleSubmit(transcript, true);
+      }
+    };
+
+    recog.onend = () => {
+      setListening(false);
+      if (speechToSpeechMode) {
+        setTimeout(() => {
+          try { recog.start(); } catch {}
+        }, 200);
+      }
+    };
+
+    recogRef.current = recog;
+    setSpeechToSpeechMode(true);
+
+    try { recog.start(); } catch (err) { console.error(err); }
+  };
+
+  const stopMic = () => {
+    if (!recogRef.current) return;
+    setSpeechToSpeechMode(false);
+    setListening(false);
+    try { recogRef.current.abort(); } catch {}
+    recogRef.current = null;
+  };
+
+  const toggleSpeechToSpeech = () => {
+    if (speechToSpeechMode) {
+      stopMic();
+    } else {
+      startMic();
+    }
+  };
+
+  const handleSpeechResult = (text: string) => {
+    if (speechToSpeechMode) {
+      handleSubmit(text, true)
     }
   }
 
-  const toggleSpeechToSpeech = () => {
-    setSpeechToSpeechMode(!speechToSpeechMode)
-  }
-
-  const handleSpeechResult = (text: string) => {
-    handleSubmit(text, true)
-  }
-
+  // ---- MESSAGE HANDLING ----
   async function fetchReply(text: string) {
     try {
       const res = await fetch("/api/educator", {
@@ -134,8 +191,7 @@ export default function AIHelper() {
       return data
     } catch (e) {
       console.error("fetchReply error", e)
-      const isBangla = lang === "bn"
-      const fallback = isBangla
+      const fallback = lang === "bn"
         ? "দুঃখিত — কিছু সমস্যা হয়েছে। আবার বলুন বা টাইপ করুন।"
         : "Sorry — something went wrong. Please try again or type your question."
       return { reply: fallback, intent: { type: "answer" as const } }
@@ -143,14 +199,12 @@ export default function AIHelper() {
   }
 
   const handleSubmit = async (text: string, fromMic = false) => {
-    if (!text || text.trim() === "") return
+    if (!text.trim()) return
     const trimmed = text.trim()
-    setMessages((m) => [...m, { role: "user", text: trimmed, time: Date.now() }])
-
-    setMessages((m) => [...m, { role: "bot", text: lang === "en" ? "Thinking..." : "চিন্তা হচ্ছে...", time: Date.now() }])
+    setMessages(m => [...m, { role: "user", text: trimmed, time: Date.now() }])
+    setMessages(m => [...m, { role: "bot", text: lang === "en" ? "Thinking..." : "চিন্তা হচ্ছে...", time: Date.now() }])
     const data = await fetchReply(trimmed)
-
-    setMessages((m) => {
+    setMessages(m => {
       const copy = [...m]
       for (let i = copy.length - 1; i >= 0; i--) {
         if (copy[i].role === "bot" && (copy[i].text === "Thinking..." || copy[i].text === "চিন্তা হচ্ছে...")) {
@@ -162,17 +216,8 @@ export default function AIHelper() {
       return copy
     })
 
-    // Speak the response and wait for completion
-    await speak(data.reply)
-
-    if (data.intent && data.intent.type === "navigate" && data.intent.target) {
-      setTimeout(() => {
-        try {
-          router.push(data.intent!.target!)
-        } catch (e) {
-          console.error("Router push failed", e)
-        }
-      }, 600)
+    if (data.intent?.type === "navigate" && data.intent.target) {
+      setTimeout(() => { try { router.push(data.intent!.target!) } catch {} }, 600)
     }
   }
 
@@ -246,7 +291,7 @@ export default function AIHelper() {
                 "0 20px 40px rgba(6, 182, 212, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 8px 16px rgba(0, 0, 0, 0.15)"
             }}
             onMouseLeave={(e) => {
-              ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1)"
+              ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1) translateY(0)"
               ;(e.currentTarget as HTMLButtonElement).style.boxShadow =
                 "0 12px 32px rgba(6, 182, 212, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 4px 8px rgba(0, 0, 0, 0.1)"
             }}
@@ -368,8 +413,7 @@ export default function AIHelper() {
               onClick={() => {
                 setOpen(false)
                 setSpeechToSpeechMode(false)
-                setIsSpeaking(false)
-                window.speechSynthesis.cancel()
+                stopMic()
               }}
               style={{
                 background: "rgba(255, 255, 255, 0.2)",
@@ -455,7 +499,7 @@ export default function AIHelper() {
               style={{
                 padding: "8px 14px",
                 borderRadius: "8px",
-                border: "1.5px solid #e2e8f0",
+                border: "1px solid #e2e8f0",
                 background: "#ffffff",
                 cursor: "pointer",
                 fontSize: "13px",
@@ -504,10 +548,10 @@ export default function AIHelper() {
               }}
             >
               {speechToSpeechMode && (
-                <span style={{ 
-                  width: "8px", 
-                  height: "8px", 
-                  borderRadius: "50%", 
+                <span style={{
+                  width: "8px",
+                  height: "8px",
+                  borderRadius: "50%",
                   background: "white",
                   animation: "pulse 1.5s infinite"
                 }} />
@@ -553,6 +597,7 @@ export default function AIHelper() {
                     lineHeight: "1.6",
                     wordWrap: "break-word",
                     fontWeight: m.role === "user" ? 500 : 400,
+                    fontFamily: lang === "bn" ? "'Noto Sans Bengali', 'Hind Siliguri', sans-serif" : "inherit",
                   }}
                 >
                   {m.role === "bot" ? (
@@ -613,6 +658,7 @@ export default function AIHelper() {
                 background: speechToSpeechMode ? "#f1f5f9" : "#f8fafc",
                 fontWeight: 500,
                 opacity: speechToSpeechMode ? 0.6 : 1,
+                fontFamily: lang === "bn" ? "'Noto Sans Bengali', 'Hind Siliguri', sans-serif" : "inherit",
               }}
               onFocus={(e) => {
                 if (!speechToSpeechMode) {
@@ -718,10 +764,10 @@ export default function AIHelper() {
                 zIndex: 10001,
               }}
             >
-              <div style={{ 
-                width: "48px", 
-                height: "48px", 
-                borderRadius: "50%", 
+              <div style={{
+                width: "48px",
+                height: "48px",
+                borderRadius: "50%",
                 background: "rgba(255, 255, 255, 0.2)",
                 display: "flex",
                 alignItems: "center",
@@ -734,58 +780,42 @@ export default function AIHelper() {
                   <line x1="8" y1="23" x2="16" y2="23" />
                 </svg>
               </div>
-              <div style={{ 
-                fontSize: "16px", 
-                fontWeight: 600, 
-                textAlign: "center" 
+              <div style={{
+                fontSize: "16px",
+                fontWeight: 600,
+                textAlign: "center"
               }}>
-                {isSpeaking 
-                  ? (lang === "en" ? "Speaking..." : "বলছি...") 
-                  : (lang === "en" ? "Listening..." : "শুনছি...")}
+                {lang === "en" ? "Listening..." : "শুনছি..."}
               </div>
-              <div style={{ 
-                fontSize: "13px", 
+              <div style={{
+                fontSize: "13px",
                 opacity: 0.9,
-                textAlign: "center" 
+                textAlign: "center"
               }}>
-                {isSpeaking 
-                  ? (lang === "en" ? "Please wait..." : "অনুগ্রহ করে অপেক্ষা করুন...") 
-                  : (lang === "en" ? "Speak your question" : "আপনার প্রশ্ন বলুন")}
+                {lang === "en" ? "Speak your question" : "আপনার প্রশ্ন বলুন"}
               </div>
-              {!isSpeaking && (
-                <div style={{ 
-                  display: "flex", 
-                  gap: "4px",
-                  marginTop: "4px"
-                }}>
-                  {[0, 1, 2].map((i) => (
-                    <div
-                      key={i}
-                      style={{
-                        width: "6px",
-                        height: "24px",
-                        background: "white",
-                        borderRadius: "3px",
-                        animation: `pulse 1s infinite ${i * 0.2}s`,
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
+              <div style={{
+                display: "flex",
+                gap: "4px",
+                marginTop: "4px"
+              }}>
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    style={{
+                      width: "6px",
+                      height: "24px",
+                      background: "white",
+                      borderRadius: "3px",
+                      animation: `pulse 1s infinite ${i * 0.2}s`,
+                    }}
+                  />
+                ))}
+              </div>
             </div>
           )}
         </div>
       )}
-
-      {/* Voice Mode Component */}
-      <VoiceMode
-        speechToSpeechMode={speechToSpeechMode}
-        lang={lang}
-        onSpeechResult={handleSpeechResult}
-        onToggleMode={toggleSpeechToSpeech}
-        isSpeaking={isSpeaking}
-        setIsSpeaking={setIsSpeaking}
-      />
 
       {/* Overlay */}
       {open && (
@@ -793,8 +823,7 @@ export default function AIHelper() {
           onClick={() => {
             setOpen(false)
             setSpeechToSpeechMode(false)
-            setIsSpeaking(false)
-            window.speechSynthesis.cancel()
+            stopMic()
           }}
           style={{
             position: "fixed",
