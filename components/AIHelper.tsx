@@ -33,6 +33,14 @@ export default function AIHelper() {
   const didLoadFromStorage = useRef(false)
 
   const recogRef = useRef<any>(null)
+  const currentTranscriptRef = useRef<string>("")
+  const isRestartingRef = useRef(false)
+  const speechModeRef = useRef(false)
+  const recognitionStartedRef = useRef(false)
+  
+  // Detect mobile device and iOS specifically
+  const isMobile = typeof window !== "undefined" && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  const isIOS = typeof window !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent)
 
   // Initialize component on client-side only
   useEffect(() => { setMounted(true) }, [])
@@ -106,62 +114,295 @@ export default function AIHelper() {
 
   // ---- MIC CONTROL LOGIC ----
 
-  const startMic = () => {
-    if (listening) return;
+  const stopMic = () => {
+    console.log("[Mic] Stopping microphone...");
+    if (recogRef.current) {
+      try {
+        recogRef.current.onend = null; // Prevent restart
+        recogRef.current.onerror = null;
+        recogRef.current.onresult = null;
+        recogRef.current.onstart = null;
+        recogRef.current.stop();
+      } catch (err) {
+        console.error("[Mic] Error stopping:", err);
+      }
+      try {
+        recogRef.current.abort();
+      } catch (err) {
+        console.error("[Mic] Error aborting:", err);
+      }
+      recogRef.current = null;
+    }
+    speechModeRef.current = false;
+    setSpeechToSpeechMode(false);
+    setListening(false);
+    isRestartingRef.current = false;
+    currentTranscriptRef.current = "";
+    console.log("[Mic] Stopped");
+  };
+
+  const startMic = async () => {
+    // Disable microphone on mobile devices
+    if (isMobile) {
+      console.log("[Mic] Microphone disabled on mobile devices");
+      return;
+    }
+    
+    console.log("[Mic] Starting microphone...");
+    
+    // Store timeout reference for clearing in onstart
+    let startTimeoutRef: NodeJS.Timeout | null = null;
+    
+    // Check if we're on HTTPS or localhost (required for microphone access)
+    if (typeof window !== "undefined") {
+      const protocol = window.location.protocol;
+      const hostname = window.location.hostname;
+      const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1";
+      
+      // Only block if it's HTTP (not secure) and not localhost
+      if (protocol === "http:" && !isLocalhost) {
+        alert(lang === "en"
+          ? "Microphone access requires HTTPS. Please use https:// or localhost."
+          : "মাইক্রোফোন অ্যাক্সেসের জন্য HTTPS প্রয়োজন। অনুগ্রহ করে https:// বা localhost ব্যবহার করুন।");
+        return;
+      }
+    }
+
+    // Stop any existing recognition first
+    if (recogRef.current) {
+      stopMic();
+      // Wait a bit for cleanup
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
 
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("Speech recognition not supported.");
+      alert(lang === "en" 
+        ? "Speech recognition is not supported in your browser. Please use Chrome, Edge, or Safari." 
+        : "আপনার ব্রাউজারে স্পিচ রিকগনিশন সমর্থিত নয়। অনুগ্রহ করে Chrome, Edge, বা Safari ব্যবহার করুন।");
+      return;
+    }
+
+    // Request microphone permission first
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Stop the stream immediately - we just needed permission
+      stream.getTracks().forEach(track => track.stop());
+      console.log("[Mic] Microphone permission granted");
+    } catch (err: any) {
+      console.error("[Mic] Permission error:", err);
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+        alert(lang === "en"
+          ? "Microphone permission denied. Please allow microphone access and try again."
+          : "মাইক্রোফোন অনুমতি অস্বীকার করা হয়েছে। অনুগ্রহ করে মাইক্রোফোন অ্যাক্সেস অনুমোদন করুন এবং আবার চেষ্টা করুন।");
+      } else {
+        alert(lang === "en"
+          ? "Could not access microphone. Please check your browser settings."
+          : "মাইক্রোফোন অ্যাক্সেস করা যায়নি। অনুগ্রহ করে আপনার ব্রাউজার সেটিংস পরীক্ষা করুন।");
+      }
       return;
     }
 
     const recog = new SpeechRecognition();
     recog.continuous = true;
-    recog.interimResults = false;
+    recog.interimResults = true;
     recog.lang = lang === "bn" ? "bn-BD" : "en-US";
+    recog.maxAlternatives = 1;
 
     // Reset transcript
-    (recogRef as any).currentTranscript = "";
+    currentTranscriptRef.current = "";
 
-    recog.onstart = () => setListening(true);
+    recog.onstart = () => {
+      console.log("[Mic] Recognition started");
+      recognitionStartedRef.current = true;
+      if (startTimeoutRef) {
+        clearTimeout(startTimeoutRef);
+        startTimeoutRef = null;
+      }
+      setListening(true);
+      isRestartingRef.current = false;
+    };
 
     recog.onresult = (event: any) => {
-      let transcript = "";
+      let finalTranscript = "";
+
       for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          transcript += event.results[i][0].transcript;
+          finalTranscript += transcript + " ";
         }
       }
 
-      transcript = transcript.trim();
-      if (transcript && transcript !== (recogRef as any).currentTranscript) {
-        (recogRef as any).currentTranscript = transcript; // store current to prevent repeats
-        handleSubmit(transcript, true);
+      finalTranscript = finalTranscript.trim();
+      
+      // Process final results
+      if (finalTranscript && finalTranscript !== currentTranscriptRef.current) {
+        console.log("[Mic] Final transcript:", finalTranscript);
+        currentTranscriptRef.current = finalTranscript;
+        handleSubmit(finalTranscript, true);
+      }
+    };
+
+    recog.onerror = (event: any) => {
+      console.error("[Mic] Recognition error:", event.error);
+      setListening(false);
+      
+      // Handle different error types
+      switch (event.error) {
+        case "no-speech":
+          // No speech detected - this is normal, just restart
+          if (speechModeRef.current && !isRestartingRef.current) {
+            console.log("[Mic] No speech detected, restarting...");
+            isRestartingRef.current = true;
+            setTimeout(() => {
+              if (speechModeRef.current && recogRef.current === recog) {
+                try {
+                  recog.start();
+                  isRestartingRef.current = false;
+                } catch (err) {
+                  console.error("[Mic] Error restarting:", err);
+                  isRestartingRef.current = false;
+                  stopMic();
+                }
+              } else {
+                isRestartingRef.current = false;
+              }
+            }, 1000);
+          }
+          break;
+          
+        case "audio-capture":
+          // No microphone found
+          alert(lang === "en"
+            ? "No microphone found. Please check your microphone connection."
+            : "মাইক্রোফোন পাওয়া যায়নি। অনুগ্রহ করে আপনার মাইক্রোফোন সংযোগ পরীক্ষা করুন।");
+          stopMic();
+          break;
+          
+        case "not-allowed":
+        case "service-not-allowed":
+          alert(lang === "en"
+            ? "Microphone permission denied. Please enable microphone access in your browser settings and reload the page."
+            : "মাইক্রোফোন অনুমতি অস্বীকার করা হয়েছে। অনুগ্রহ করে আপনার ব্রাউজার সেটিংসে মাইক্রোফোন অ্যাক্সেস সক্ষম করুন এবং পৃষ্ঠাটি পুনরায় লোড করুন।");
+          stopMic();
+          break;
+          
+        case "aborted":
+          // User or system aborted - don't restart
+          console.log("[Mic] Recognition aborted");
+          break;
+          
+        case "network":
+          alert(lang === "en"
+            ? "Network error. Please check your internet connection."
+            : "নেটওয়ার্ক ত্রুটি। অনুগ্রহ করে আপনার ইন্টারনেট সংযোগ পরীক্ষা করুন।");
+          stopMic();
+          break;
+          
+        default:
+          console.warn("[Mic] Unknown error:", event.error);
+          // For unknown errors, try to restart once
+          if (speechModeRef.current && !isRestartingRef.current) {
+            isRestartingRef.current = true;
+            setTimeout(() => {
+              if (speechModeRef.current && recogRef.current === recog) {
+                try {
+                  recog.start();
+                  isRestartingRef.current = false;
+                } catch (err) {
+                  console.error("[Mic] Error restarting after unknown error:", err);
+                  isRestartingRef.current = false;
+                  stopMic();
+                }
+              } else {
+                isRestartingRef.current = false;
+              }
+            }, 1000);
+          }
       }
     };
 
     recog.onend = () => {
+      console.log("[Mic] Recognition ended");
       setListening(false);
-      if (speechToSpeechMode) {
+      
+      // Auto-restart if still in speech mode
+      if (speechModeRef.current && recogRef.current === recog && !isRestartingRef.current) {
+        console.log("[Mic] Auto-restarting...");
+        isRestartingRef.current = true;
         setTimeout(() => {
-          try { recog.start(); } catch {}
-        }, 200);
+          if (speechModeRef.current && recogRef.current === recog) {
+            try {
+              recog.start();
+              isRestartingRef.current = false;
+            } catch (err: any) {
+              console.error("[Mic] Error restarting recognition:", err);
+              isRestartingRef.current = false;
+              if (speechModeRef.current) {
+                if (err.message?.includes("started") || err.message?.includes("already")) {
+                  stopMic();
+                  setTimeout(() => startMic(), 500);
+                } else {
+                  // Try one more time with same instance
+                  setTimeout(() => {
+                    if (speechModeRef.current && recogRef.current === recog) {
+                      try {
+                        recog.start();
+                      } catch (err2) {
+                        stopMic();
+                        setTimeout(() => startMic(), 500);
+                      }
+                    }
+                  }, 500);
+                }
+              }
+            }
+          } else {
+            isRestartingRef.current = false;
+          }
+        }, 300);
+      } else if (!speechModeRef.current) {
+        // Clean up if mode was turned off
+        console.log("[Mic] Mode turned off, cleaning up");
+        recogRef.current = null;
+      } else if (isRestartingRef.current) {
+        // Already restarting, do nothing
+        console.log("[Mic] Already restarting, skipping onend restart");
       }
     };
 
     recogRef.current = recog;
+    speechModeRef.current = true;
     setSpeechToSpeechMode(true);
 
-    try { recog.start(); } catch (err) { console.error(err); }
-  };
+    // Reset recognition started flag
+    recognitionStartedRef.current = false;
 
-  const stopMic = () => {
-    if (!recogRef.current) return;
-    setSpeechToSpeechMode(false);
-    setListening(false);
-    try { recogRef.current.abort(); } catch {}
-    recogRef.current = null;
+    try {
+      console.log("[Mic] Starting recognition...");
+      recog.start();
+    } catch (err: any) {
+      console.error("[Mic] Error starting recognition:", err);
+      setListening(false);
+      setSpeechToSpeechMode(false);
+      recogRef.current = null;
+      speechModeRef.current = false;
+      
+      // If it's a "already started" error, try stopping and restarting
+      if (err.message?.includes("started") || err.message?.includes("already")) {
+        console.log("[Mic] Recognition already started, resetting...");
+        setTimeout(() => {
+          if (speechModeRef.current) {
+            startMic();
+          }
+        }, 500);
+      } else {
+        alert(lang === "en"
+          ? "Failed to start microphone. Please try again."
+          : "মাইক্রোফোন শুরু করতে ব্যর্থ। অনুগ্রহ করে আবার চেষ্টা করুন।");
+      }
+    }
   };
 
   const toggleSpeechToSpeech = () => {
@@ -172,11 +413,36 @@ export default function AIHelper() {
     }
   };
 
-  const handleSpeechResult = (text: string) => {
-    if (speechToSpeechMode) {
-      handleSubmit(text, true)
+  // Cleanup on unmount or when language changes
+  useEffect(() => {
+    return () => {
+      if (recogRef.current) {
+        try {
+          recogRef.current.stop();
+          recogRef.current.abort();
+        } catch {}
+        recogRef.current = null;
+      }
+    };
+  }, []);
+
+  // Restart recognition when language changes if it's active
+  useEffect(() => {
+    if (speechModeRef.current && recogRef.current) {
+      const wasListening = listening;
+      stopMic();
+      if (wasListening) {
+        setTimeout(() => startMic(), 300);
+      }
     }
-  }
+  }, [lang])
+
+  // Stop microphone on mobile devices
+  useEffect(() => {
+    if (isMobile && speechModeRef.current) {
+      stopMic();
+    }
+  }, [isMobile])
 
   // ---- MESSAGE HANDLING ----
   async function fetchReply(text: string) {
@@ -518,46 +784,48 @@ export default function AIHelper() {
             >
               {lang === "en" ? "Clear" : "সাফ করুন"}
             </button>
-            <button
-              onClick={toggleSpeechToSpeech}
-              style={{
-                padding: "8px 14px",
-                borderRadius: "8px",
-                border: "1.5px solid #e2e8f0",
-                background: speechToSpeechMode ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "#ffffff",
-                cursor: "pointer",
-                fontSize: "13px",
-                fontWeight: 600,
-                transition: "all 0.2s",
-                color: speechToSpeechMode ? "white" : "#10b981",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-              }}
-              onMouseEnter={(e) => {
-                if (!speechToSpeechMode) {
-                  ;(e.currentTarget as HTMLButtonElement).style.background = "#f1f5f9"
-                  ;(e.currentTarget as HTMLButtonElement).style.borderColor = "#10b981"
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!speechToSpeechMode) {
-                  ;(e.currentTarget as HTMLButtonElement).style.background = "#ffffff"
-                  ;(e.currentTarget as HTMLButtonElement).style.borderColor = "#e2e8f0"
-                }
-              }}
-            >
-              {speechToSpeechMode && (
-                <span style={{
-                  width: "8px",
-                  height: "8px",
-                  borderRadius: "50%",
-                  background: "white",
-                  animation: "pulse 1.5s infinite"
-                }} />
-              )}
-              {lang === "en" ? (speechToSpeechMode ? "Voice Mode ON" : "Voice Mode") : (speechToSpeechMode ? "ভয়েস মোড চালু" : "ভয়েস মোড")}
-            </button>
+            {!isMobile && (
+              <button
+                onClick={toggleSpeechToSpeech}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: "8px",
+                  border: "1.5px solid #e2e8f0",
+                  background: speechToSpeechMode ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "#ffffff",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  transition: "all 0.2s",
+                  color: speechToSpeechMode ? "white" : "#10b981",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+                onMouseEnter={(e) => {
+                  if (!speechToSpeechMode) {
+                    ;(e.currentTarget as HTMLButtonElement).style.background = "#f1f5f9"
+                    ;(e.currentTarget as HTMLButtonElement).style.borderColor = "#10b981"
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!speechToSpeechMode) {
+                    ;(e.currentTarget as HTMLButtonElement).style.background = "#ffffff"
+                    ;(e.currentTarget as HTMLButtonElement).style.borderColor = "#e2e8f0"
+                  }
+                }}
+              >
+                {speechToSpeechMode && (
+                  <span style={{
+                    width: "8px",
+                    height: "8px",
+                    borderRadius: "50%",
+                    background: "white",
+                    animation: "pulse 1.5s infinite"
+                  }} />
+                )}
+                {lang === "en" ? (speechToSpeechMode ? "Voice Mode ON" : "Voice Mode") : (speechToSpeechMode ? "ভয়েস মোড চালু" : "ভয়েস মোড")}
+              </button>
+            )}
           </div>
 
           {/* Messages */}
@@ -744,7 +1012,7 @@ export default function AIHelper() {
           />
 
           {/* Voice Mode Indicator */}
-          {speechToSpeechMode && (
+          {speechToSpeechMode && !isMobile && (
             <div
               style={{
                 position: "absolute",

@@ -183,7 +183,7 @@ async function callGroq(prompt: string, apiKey: string, model: string) {
         {
           role: "system",
           content:
-            "You are a helpful bilingual (Bangla/English) science teacher for Bangladeshi class 9 students. " +
+            "You are a muslim helpful bilingual (Bangla/English) science teacher for Bangladeshi class 9-10 students. " +
             "Rules:\n" +
             "1. Answer ONLY in the language specified by the user - never mix languages\n" +
             "2. For any navigation, do NOT return URLs. Navigation is handled separately.\n" +
@@ -194,7 +194,7 @@ async function callGroq(prompt: string, apiKey: string, model: string) {
         { role: "user", content: prompt },
       ],
       temperature: 0.7,
-      max_completion_tokens: 1500,
+      max_completion_tokens: 1024,
       top_p: 0.9,
     });
 
