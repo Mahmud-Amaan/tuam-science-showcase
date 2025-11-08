@@ -22,11 +22,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Virtual Lab | Interactive Science Learning Platform",
   description:
-    "Explore science like never before! Virtual Lab brings interactive 3D experiments in physics, chemistry, and biology — aligned with the National curriculum. Learn, visualize, and have fun with virtual science labs.",
+    "Explore science like never before! Virtual Lab brings interactive experiments in physics, chemistry, and biology — aligned with the National curriculum. Learn, visualize, and have fun with virtual science labs.",
   openGraph: {
-    title: "Virtual Lab | Interactive 3D Science Learning",
+    title: "Virtual Lab | Interactive Science Learning",
     description:
-      "Dive into 3D science experiments and simulations made for students in Bangladesh. Learn physics, chemistry, and biology through interactive virtual labs.",
+      "Dive into science experiments and simulations made for students in Bangladesh. Learn physics, chemistry, and biology through interactive virtual labs.",
     url: "https://tuam-science.vercel.app/",
     siteName: "Virtual Lab",
     type: "website",
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
         url: "https://tuam-science.vercel.app/banner.jpg",
         width: 1200,
         height: 630,
-        alt: "Virtual Lab — 3D Interactive Science Learning",
+        alt: "Virtual Lab — Interactive Science Learning",
       },
     ],
   },
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Virtual Lab | Learn Science Through Interactive Experiments",
     description:
-      "Experience science through 3D virtual labs and experiments based on the National curriculum. Fun, engaging, and educational!",
+      "Experience science through virtual labs and experiments based on the National curriculum. Fun, engaging, and educational!",
     images: ["https://tuam-science.vercel.app/banner.jpg"],
   },
 }
