@@ -10,13 +10,13 @@ const Footer = ({ language }: FooterProps) => {
   const currentYear = new Date().getFullYear()
 
   return (
-    <footer className="bg-gradient-to-b from-foreground to-foreground/95 text-white">
+    <footer className="bg-linear-to-b from-foreground to-foreground/95 text-white">
       <div className="max-w-7xl mx-auto px-4 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
           {/* Brand Section */}
           <div className="space-y-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-secondary flex items-center justify-center text-foreground font-bold text-xl">
+              <div className="w-10 h-10 rounded-xl bg-linear-to-br from-accent to-secondary flex items-center justify-center text-foreground font-bold text-xl">
                 🔬
               </div>
               <h3 className="text-2xl font-bold">
@@ -66,8 +66,8 @@ const Footer = ({ language }: FooterProps) => {
           <p>
             © {currentYear}{" "}
             {language === "en"
-              ? "Virtual Lab. All rights reserved. Built by a Class 9 students."
-              : "ভার্চুয়াল ল্যাব। সর্বাধিকার সংরক্ষিত। একজন নবম শ্রেণীর শিক্ষার্থীর দ্বারা নির্মিত।"}
+              ? "Virtual Lab. All rights reserved. Built with inspiration from various open-source educational tools and science laboratories worldwide."
+              : "ভার্চুয়াল ল্যাব। সর্বাধিকার সংরক্ষিত। বিশ্বের বিভিন্ন ওপেন-সোর্স শিক্ষামূলক টুল এবং বিজ্ঞান ল্যাবরেটরি থেকে অনুপ্রেরণা নিয়ে তৈরি।"}
           </p>
           <div className="flex gap-6">
             <button 

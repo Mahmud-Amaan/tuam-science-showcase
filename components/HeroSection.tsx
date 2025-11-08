@@ -69,22 +69,12 @@ const HeroSection = ({ language }: HeroProps) => {
         }}
         title="Background video"
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black/60" />
+      <div className="absolute inset-0 bg-linear-to-b from-transparent via-black/20 to-black/60" />
 
-      {videoError && <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-black to-black" />}
+      {videoError && <div className="absolute inset-0 bg-linear-to-br from-blue-900 via-black to-black" />}
 
       {/* Content with padding */}
       <div className="relative z-20 mx-auto px-4 text-center pt-20 pb-20">
-        <div
-          className="inline-flex items-center gap-2 px-3 py-1.5 mb-6 backdrop-blur-lg  rounded-full shadow-xl hover:shadow-2xl hover:shadow-blue-500/30 transition-all duration-300 transform hover:scale-105 animate-bounce-in"
-          role="banner"
-          aria-label={language === "en" ? "Award-winning learning platform badge" : "পুরস্কার বিজয়ী শেখার প্ল্যাটফর্ম ব্যাজ"}
-        >
-          <Zap size={14} className="text-blue-600 animate-pulse" aria-hidden="true" />
-          <span className="text-xs font-medium bg-linear-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-            {language === "en" ? "🏆 Award-winning Learning Platform" : "🏆 পুরস্কার বিজয়ী শেখার প্ল্যাটফর্ম"}
-          </span>
-        </div>
 
         <h1 id="hero-heading" className="text-4xl md:text-5xl font-bold mb-4 leading-tight">
           <span className="block bg-linear-to-r from-blue-600 via-cyan-600 to-green-600 bg-clip-text text-transparent animate-gradient pb-1">
