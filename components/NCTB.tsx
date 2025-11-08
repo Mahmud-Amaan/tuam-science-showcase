@@ -24,8 +24,8 @@ const NCTB = ({ language }: NCTBProps) => {
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             {language === "en"
-              ? "Our simulations are carefully designed to align with the National Curriculum and Textbook Board standards"
-              : "আমাদের সিমুলেশনগুলি জাতীয় পাঠ্যক্রম এবং পাঠ্যপুস্তক বোর্ড মানদণ্ডের সাথে সামঞ্জস্যপূর্ণভাবে ডিজাইন করা হয়েছে"}
+              ? "Our simulations are carefully designed to align with the National Curriculum standards"
+              : "আমাদের সিমুলেশনগুলি জাতীয় পাঠ্যক্রম মানদণ্ডের সাথে সামঞ্জস্যপূর্ণভাবে ডিজাইন করা হয়েছে"}
           </p>
         </div>
 
