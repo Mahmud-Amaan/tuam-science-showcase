@@ -45,29 +45,36 @@ const HeroSection = ({ language }: HeroProps) => {
 
   return (
     <section
-      className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20 pb-20 bg-black"
+      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-black"
       aria-labelledby="hero-heading"
     >
-      {/* Video Background */}
-      <div className="absolute inset-0 w-full h-full">
-        <video
-          ref={videoRef}
-          src="/background.mp4"
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="auto"
-          poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1920 1080'%3E%3Crect fill='%23000000' width='1920' height='1080'/%3E%3C/svg%3E"
-          className="absolute top-1/2 left-1/2 w-full h-full min-w-full min-h-full -translate-x-1/2 -translate-y-1/2 object-cover"
-          title="Background video"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black/60" />
-      </div>
+      {/* Video Background - Hero Section Only */}
+      <video
+        ref={videoRef}
+        src="/background.mp4"
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="auto"
+        poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1920 1080'%3E%3Crect fill='%23000000' width='1920' height='1080'/%3E%3C/svg%3E"
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{ 
+          position: 'absolute',
+          top: '0',
+          left: '0',
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover'
+        }}
+        title="Background video"
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black/60" />
 
       {videoError && <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-black to-black" />}
 
-      <div className="relative z-20 mx-auto px-4 text-center">
+      {/* Content with padding */}
+      <div className="relative z-20 mx-auto px-4 text-center pt-20 pb-20">
         <div
           className="inline-flex items-center gap-2 px-3 py-1.5 mb-6 backdrop-blur-lg  rounded-full shadow-xl hover:shadow-2xl hover:shadow-blue-500/30 transition-all duration-300 transform hover:scale-105 animate-bounce-in"
           role="banner"
