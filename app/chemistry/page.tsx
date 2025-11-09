@@ -88,12 +88,8 @@ export default function ChemistryPage() {
         </section>
 
         {/* Topics Grid */}
-        <section className="py-16 px-4">
+        <section className="pt-8 pb-16 px-4">
           <div className="max-w-7xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 text-foreground">
-              {language === "en" ? "Explore Topics" : "বিষয়গুলি অন্বেষণ করুন"}
-            </h2>
-
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {topics.map((topic, idx) => (
                 <div
