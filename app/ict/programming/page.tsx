@@ -59,25 +59,25 @@ export default function ProgrammingPage() {
       
       <main>
         {/* Hero Section */}
-        <section className="relative pt-24 pb-16 px-4 bg-linear-to-br from-green-50 via-emerald-50/50 to-teal-50/30">
+        <section className="relative pt-24 pb-16 px-4 bg-gradient-to-br from-emerald-100/60 via-teal-50/30 to-transparent dark:from-emerald-500/20 dark:via-teal-500/10 dark:to-transparent">
           <div className="max-w-7xl mx-auto">
             <button
               onClick={() => router.push("/ict")}
-              className="inline-flex items-center gap-2 mb-8 text-green-700 hover:text-green-900 transition-colors group"
+              className="inline-flex items-center gap-2 mb-8 text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200 transition-colors group"
             >
               <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
               <span className="font-medium">{language === "en" ? "Back to ICT" : "আইসিটিতে ফিরুন"}</span>
             </button>
 
             <div className="flex items-center gap-6 mb-8">
-              <div className="w-20 h-20 rounded-2xl bg-linear-to-br from-green-500 to-emerald-400 flex items-center justify-center shadow-lg">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 dark:from-emerald-500 dark:to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
                 <Code className="w-12 h-12 text-white" strokeWidth={1.5} />
               </div>
               <div>
                 <h1 className="text-5xl md:text-6xl font-bold bg-linear-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-2">
                   {language === "en" ? "Programming" : "প্রোগ্রামিং"}
                 </h1>
-                <p className="text-lg text-slate-600">
+                <p className="text-lg text-muted-foreground">
                   {language === "en"
                     ? "Explore programming languages and coding fundamentals"
                     : "প্রোগ্রামিং ভাষা এবং কোডিং এর মৌলিক বিষয় অন্বেষণ করুন"}
@@ -95,7 +95,7 @@ export default function ProgrammingPage() {
                 <div
                   key={idx}
                   onClick={() => topic.href && router.push(topic.href)}
-                  className="group relative p-8 rounded-2xl bg-white border-2 border-green-200 hover:border-green-400 transition-all duration-300 hover:shadow-xl hover:shadow-green-500/20 transform hover:-translate-y-2 cursor-pointer"
+                  className="group relative p-8 rounded-2xl border border-emerald-200/70 dark:border-emerald-400/40 bg-card shadow-lg shadow-emerald-500/10 transition-all duration-300 hover:-translate-y-2 hover:border-emerald-400/70 dark:hover:border-emerald-300/70 hover:shadow-emerald-500/20 cursor-pointer"
                 >
                   <div className="text-5xl mb-4 text-center">{topic.icon}</div>
                   <h3 className="text-xl font-bold text-foreground mb-2 text-center">
@@ -104,7 +104,7 @@ export default function ProgrammingPage() {
                   <p className="text-sm text-muted-foreground text-center">
                     {language === "en" ? topic.descEn : topic.descBn}
                   </p>
-                  <div className="absolute inset-0 rounded-2xl bg-linear-to-br from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-emerald-500/15 via-transparent to-transparent dark:from-emerald-300/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </div>
               ))}
             </div>
@@ -112,11 +112,11 @@ export default function ProgrammingPage() {
         </section>
 
         {/* Features Section */}
-        <section className="py-16 px-4 bg-linear-to-b from-white to-green-50/30">
+        <section className="py-16 px-4 bg-gradient-to-b from-background via-muted/15 to-muted/5 dark:from-background dark:via-background/80 dark:to-background">
           <div className="max-w-7xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="text-center p-6">
-                <FileCode className="w-12 h-12 text-green-600 mx-auto mb-4" />
+                <FileCode className="w-12 h-12 text-emerald-600 dark:text-emerald-300 mx-auto mb-4" />
                 <h3 className="text-xl font-bold mb-2">{language === "en" ? "Web Development" : "ওয়েব ডেভেলপমেন্ট"}</h3>
                 <p className="text-muted-foreground">
                   {language === "en"
@@ -124,8 +124,8 @@ export default function ProgrammingPage() {
                     : "ওয়েব পেজ এবং অ্যাপ্লিকেশন তৈরির জন্য এইচটিএমএল শিখুন"}
                 </p>
               </div>
-              <div className="text-center p-6">
-                <Terminal className="w-12 h-12 text-green-600 mx-auto mb-4" />
+              <div className="text-center প-6">
+                <Terminal className="w-12 h-12 text-emerald-600 dark:text-emerald-300 mx-auto mb-4" />
                 <h3 className="text-xl font-bold mb-2">{language === "en" ? "Python Programming" : "পাইথন প্রোগ্রামিং"}</h3>
                 <p className="text-muted-foreground">
                   {language === "en"
@@ -133,8 +133,8 @@ export default function ProgrammingPage() {
                     : "ডেটা সায়েন্স এবং অটোমেশনের জন্য পাইথন আয়ত্ত করুন"}
                 </p>
               </div>
-              <div className="text-center p-6">
-                <Cpu className="w-12 h-12 text-green-600 mx-auto mb-4" />
+              <div className="text-center প-6">
+                <Cpu className="w-12 h-12 text-emerald-600 dark:text-emerald-300 mx-auto mb-4" />
                 <h3 className="text-xl font-bold mb-2">{language === "en" ? "System Programming" : "সিস্টেম প্রোগ্রামিং"}</h3>
                 <p className="text-muted-foreground">
                   {language === "en"

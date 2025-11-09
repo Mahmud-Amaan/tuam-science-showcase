@@ -38,7 +38,10 @@ const Benefits = ({ language }: BenefitsProps) => {
   ]
 
   return (
-    <section className="py-20 px-4 bg-gradient-to-r from-primary/5 via-secondary/5 to-accent/5" aria-labelledby="benefits-heading">
+    <section
+      className="py-20 px-4 bg-gradient-to-r from-primary/5 via-secondary/5 to-accent/5 dark:from-primary/10 dark:via-secondary/5 dark:to-accent/5"
+      aria-labelledby="benefits-heading"
+    >
       <div className="max-w-7xl mx-auto">
         <h2 id="benefits-heading" className="text-4xl md:text-5xl font-bold text-center mb-16 text-foreground">
           {language === "en" ? "Why Virtual Lab?" : "কেন ভার্চুয়াল ল্যাব?"}
@@ -58,7 +61,7 @@ const Benefits = ({ language }: BenefitsProps) => {
                 {(language === "en" ? benefit.itemsEn : benefit.itemsBn).map((item, itemIdx) => (
                   <div
                     key={itemIdx}
-                    className="flex items-start gap-4 p-4 rounded-lg bg-white border border-border hover:border-primary/50 transition-colors"
+                    className="flex items-start gap-4 p-4 rounded-lg border border-border/70 bg-card shadow-sm shadow-primary/5 hover:border-primary/40 hover:shadow-primary/20 transition-colors"
                     role="listitem"
                   >
                     <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center mt-0.5" role="img" aria-label="Check mark">

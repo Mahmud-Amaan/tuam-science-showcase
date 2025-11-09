@@ -59,25 +59,25 @@ export default function PhysicsPage() {
       
       <main>
         {/* Hero Section */}
-        <section className="relative pt-24 pb-16 px-4 bg-linear-to-br from-blue-50 via-cyan-50/50 to-indigo-50/30">
+        <section className="relative pt-24 pb-16 px-4 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent dark:from-primary/20 dark:via-primary/10 dark:to-transparent">
           <div className="max-w-7xl mx-auto">
             <button
               onClick={() => router.push("/")}
-              className="inline-flex items-center gap-2 mb-8 text-blue-700 hover:text-blue-900 transition-colors group"
+              className="inline-flex items-center gap-2 mb-8 text-primary hover:text-primary/80 transition-colors group"
             >
               <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
               <span className="font-medium">{language === "en" ? "Back to Home" : "হোমে ফিরুন"}</span>
             </button>
 
             <div className="flex items-center gap-6 mb-8">
-              <div className="w-20 h-20 rounded-2xl bg-linear-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-lg">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg shadow-primary/20">
                 <Atom className="w-12 h-12 text-white" strokeWidth={1.5} />
               </div>
               <div>
                 <h1 className="text-5xl md:text-6xl font-bold bg-linear-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent mb-2">
                   {language === "en" ? "Physics" : "পদার্থবিদ্যা"}
                 </h1>
-                <p className="text-lg text-slate-600">
+                <p className="text-lg text-muted-foreground">
                   {language === "en"
                     ? "Discover the laws that govern the universe"
                     : "মহাবিশ্বকে নিয়ন্ত্রণকারী আইনগুলি আবিষ্কার করুন"}
@@ -95,7 +95,7 @@ export default function PhysicsPage() {
                 <div
                   key={idx}
                   onClick={() => topic.route && router.push(topic.route)}
-                  className={`group relative p-8 rounded-2xl bg-white border-2 border-blue-200 hover:border-blue-400 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/20 transform hover:-translate-y-2 ${topic.route ? 'cursor-pointer' : ''}`}
+                  className={`group relative p-8 rounded-2xl border border-border/70 bg-card shadow-lg shadow-primary/5 transition-all duration-300 hover:-translate-y-2 hover:border-primary/40 hover:shadow-primary/20 ${topic.route ? 'cursor-pointer' : ''}`}
                 >
                   <div className="text-5xl mb-4 text-center">{topic.icon}</div>
                   <h3 className="text-xl font-bold text-foreground mb-2 text-center">
@@ -104,7 +104,7 @@ export default function PhysicsPage() {
                   <p className="text-sm text-muted-foreground text-center">
                     {language === "en" ? topic.descEn : topic.descBn}
                   </p>
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </div>
               ))}
             </div>
@@ -112,11 +112,11 @@ export default function PhysicsPage() {
         </section>
 
         {/* Features Section */}
-        <section className="py-16 px-4 bg-gradient-to-b from-white to-blue-50/30">
+        <section className="py-16 px-4 bg-gradient-to-b from-background via-muted/15 to-muted/5 dark:from-background dark:via-background/80 dark:to-background">
           <div className="max-w-7xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="text-center p-6">
-                <Zap className="w-12 h-12 text-blue-600 mx-auto mb-4" />
+                <Zap className="w-12 h-12 text-primary mx-auto mb-4" />
                 <h3 className="text-xl font-bold mb-2">{language === "en" ? "3D Simulations" : "3D সিমুলেশন"}</h3>
                 <p className="text-muted-foreground">
                   {language === "en"
@@ -125,7 +125,7 @@ export default function PhysicsPage() {
                 </p>
               </div>
               <div className="text-center p-6">
-                <Gauge className="w-12 h-12 text-blue-600 mx-auto mb-4" />
+                <Gauge className="w-12 h-12 text-primary mx-auto mb-4" />
                 <h3 className="text-xl font-bold mb-2">{language === "en" ? "Experiments" : "পরীক্ষা"}</h3>
                 <p className="text-muted-foreground">
                   {language === "en"
@@ -134,7 +134,7 @@ export default function PhysicsPage() {
                 </p>
               </div>
               <div className="text-center p-6">
-                <Waves className="w-12 h-12 text-blue-600 mx-auto mb-4" />
+                <Waves className="w-12 h-12 text-primary mx-auto mb-4" />
                 <h3 className="text-xl font-bold mb-2">{language === "en" ? "Real-time Analysis" : "রিয়েল-টাইম বিশ্লেষণ"}</h3>
                 <p className="text-muted-foreground">
                   {language === "en"

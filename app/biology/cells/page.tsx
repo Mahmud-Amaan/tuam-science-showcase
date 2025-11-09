@@ -82,25 +82,25 @@ export default function CellsPage() {
       />
 
       <main>
-        <section className="relative pt-24 pb-16 px-4 bg-linear-to-br from-orange-50 via-red-50/50 to-amber-50/30">
+        <section className="relative pt-24 pb-16 px-4 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent dark:from-primary/20 dark:via-primary/10 dark:to-transparent">
           <div className="max-w-7xl mx-auto">
             <button
               onClick={() => router.push("/biology")}
-              className="inline-flex items-center gap-2 mb-8 text-orange-700 hover:text-orange-900 transition-colors group"
+              className="inline-flex items-center gap-2 mb-8 text-primary hover:text-primary/80 transition-colors group"
             >
               <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
               <span className="font-medium">{language === "en" ? "Back to Biology" : "জীববিজ্ঞানে ফিরুন"}</span>
             </button>
 
             <div className="flex items-center gap-6 mb-8">
-              <div className="w-20 h-20 rounded-2xl bg-linear-to-br from-orange-500 to-red-400 flex items-center justify-center shadow-lg">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg shadow-primary/25">
                 <Microscope className="w-12 h-12 text-white" strokeWidth={1.5} />
               </div>
               <div>
                 <h1 className="text-5xl md:text-6xl font-bold bg-linear-to-r from-orange-600 to-red-600 bg-clip-text text-transparent mb-2">
                   {language === "en" ? "Cell Biology" : "কোষ জীববিদ্যা"}
                 </h1>
-                <p className="text-lg text-slate-600">
+                <p className="text-lg text-muted-foreground">
                   {language === "en"
                     ? "Interactive 3D models of cells and organelles"
                     : "কোষ এবং অঙ্গাণুর ইন্টারঅ্যাক্টিভ 3D মডেল"}
@@ -117,7 +117,7 @@ export default function CellsPage() {
                 <div
                   key={idx}
                   onClick={() => topic.href && router.push(topic.href)}
-                  className="group relative p-8 rounded-2xl bg-white border-2 border-orange-200 hover:border-orange-400 transition-all duration-300 hover:shadow-xl hover:shadow-orange-500/20 transform hover:-translate-y-2 cursor-pointer"
+                  className="group relative p-8 rounded-2xl border border-border/70 bg-card shadow-lg shadow-primary/5 transition-all duration-300 hover:-translate-y-2 hover:border-primary/40 hover:shadow-primary/20 cursor-pointer"
                 >
                   <div className="text-5xl mb-4 text-center">{topic.icon}</div>
                   <h3 className="text-xl font-bold text-foreground mb-2 text-center">
@@ -126,7 +126,7 @@ export default function CellsPage() {
                   <p className="text-sm text-muted-foreground text-center">
                     {language === "en" ? topic.descEn : topic.descBn}
                   </p>
-                  <div className="absolute inset-0 rounded-2xl bg-linear-to-br from-orange-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </div>
               ))}
             </div>

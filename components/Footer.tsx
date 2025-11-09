@@ -10,20 +10,20 @@ const Footer = ({ language }: FooterProps) => {
   const currentYear = new Date().getFullYear()
 
   return (
-    <footer className="bg-linear-to-b from-foreground to-foreground/95 text-white">
+    <footer className="border-t border-border/60 bg-gradient-to-b from-background to-background/95 text-foreground dark:from-background/95 dark:to-background/85">
       <div className="max-w-7xl mx-auto px-4 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
           {/* Brand Section */}
           <div className="space-y-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-linear-to-br from-accent to-secondary flex items-center justify-center text-foreground font-bold text-xl">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-primary-foreground font-bold text-xl shadow-lg shadow-primary/30">
                 🔬
               </div>
               <h3 className="text-2xl font-bold">
                 {language === "en" ? "Virtual Lab " : "ভার্চুয়াল ল্যাব"}
               </h3>
             </div>
-            <p className="text-white/70">
+            <p className="text-muted-foreground">
               {language === "en"
                 ? "Making science education interactive, engaging, and effective for students and teachers across Bangladesh."
                 : "বাংলাদেশের শিক্ষার্থী এবং শিক্ষকদের জন্য বিজ্ঞান শিক্ষাকে ইন্টারঅ্যাক্টিভ, আকর্ষণীয় এবং কার্যকর করা।"}
@@ -47,7 +47,7 @@ const Footer = ({ language }: FooterProps) => {
                     href={social.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-3 rounded-lg bg-white/10 hover:bg-white/20 transition-all duration-300 hover:scale-110 transform"
+                    className="p-3 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-all duration-300 hover:scale-110 transform"
                     aria-label={social.label}
                   >
                     <Icon size={20} />
@@ -59,10 +59,10 @@ const Footer = ({ language }: FooterProps) => {
         </div>
 
         {/* Divider */}
-        <div className="border-t border-white/10 my-8" />
+        <div className="border-t border-border/60 my-8" />
 
         {/* Bottom */}
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6 text-sm text-white/60">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6 text-sm text-muted-foreground">
           <p>
             © {currentYear}{" "}
             {language === "en"
@@ -72,13 +72,13 @@ const Footer = ({ language }: FooterProps) => {
           <div className="flex gap-6">
             <button 
               onClick={() => console.log("Privacy Policy clicked")}
-              className="hover:text-white transition-colors"
+              className="hover:text-foreground transition-colors"
             >
               {language === "en" ? "Privacy Policy" : "গোপনীয়তা নীতি"}
             </button>
             <button 
               onClick={() => console.log("Terms of Service clicked")}
-              className="hover:text-white transition-colors"
+              className="hover:text-foreground transition-colors"
             >
               {language === "en" ? "Terms of Service" : "সেবার শর্তাবলী"}
             </button>

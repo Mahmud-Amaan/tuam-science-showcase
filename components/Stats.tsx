@@ -50,13 +50,13 @@ const Stats = ({ language }: StatsProps) => {
   ]
 
   return (
-    <section id="stats-section" className="py-24 px-4 bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5">
+    <section id="stats-section" className="py-24 px-4 bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5 dark:from-primary/10 dark:via-secondary/5 dark:to-accent/5">
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           {stats.map((stat, idx) => (
             <div
               key={idx}
-              className="relative p-6 rounded-xl bg-white border border-slate-200 hover:border-primary/50 transition-all duration-300 hover:shadow-lg transform hover:scale-105 text-center group"
+              className="relative p-6 rounded-xl border border-border/70 bg-card shadow-lg shadow-primary/5 hover:border-primary/40 hover:shadow-primary/20 transition-all duration-300 hover:scale-105 text-center group"
               style={{ animation: `bounce-in 0.6s ease-out ${idx * 0.15}s backwards` }}
             >
               <div className="text-4xl mb-2 group-hover:scale-125 transition-transform duration-300">{stat.icon}</div>
@@ -64,7 +64,7 @@ const Stats = ({ language }: StatsProps) => {
                 {isVisible ? <AnimatedCounter end={stat.value} /> : "0"}
                 <span className="text-xl">{stat.suffix || ""}</span>
               </div>
-              <p className="text-sm text-slate-600">{language === "en" ? stat.labelEn : stat.labelBn}</p>
+              <p className="text-sm text-muted-foreground">{language === "en" ? stat.labelEn : stat.labelBn}</p>
             </div>
           ))}
         </div>

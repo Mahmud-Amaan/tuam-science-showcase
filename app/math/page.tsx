@@ -43,25 +43,25 @@ export default function MathPage() {
       
       <main>
         {/* Hero Section */}
-        <section className="relative pt-24 pb-16 px-4 bg-gradient-to-br from-amber-50 via-yellow-50/50 to-orange-50/30">
+        <section className="relative pt-24 pb-16 px-4 bg-gradient-to-br from-amber-100/60 via-orange-50/30 to-transparent dark:from-amber-500/20 dark:via-orange-500/10 dark:to-transparent">
           <div className="max-w-7xl mx-auto">
             <button
               onClick={() => router.push("/")}
-              className="inline-flex items-center gap-2 mb-8 text-amber-700 hover:text-amber-900 transition-colors group"
+              className="inline-flex items-center gap-2 mb-8 text-amber-700 hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200 transition-colors group"
             >
               <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
               <span className="font-medium">{language === "en" ? "Back to Home" : "হোমে ফিরুন"}</span>
             </button>
 
             <div className="flex items-center gap-6 mb-8">
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-500 to-yellow-400 flex items-center justify-center shadow-lg">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 dark:from-amber-500 dark:to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/30">
                 <Calculator className="w-12 h-12 text-white" strokeWidth={1.5} />
               </div>
               <div>
                 <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent mb-2">
                   {language === "en" ? "Mathematics" : "গণিত"}
                 </h1>
-                <p className="text-lg text-slate-600">
+                <p className="text-lg text-muted-foreground">
                   {language === "en"
                     ? "Master the language of numbers and logic"
                     : "সংখ্যা এবং যুক্তির ভাষা আয়ত্ত করুন"}
@@ -79,7 +79,7 @@ export default function MathPage() {
                 <div
                   key={idx}
                   onClick={() => topic.route && router.push(topic.route)}
-                  className="group relative p-8 rounded-2xl bg-white border-2 border-amber-200 hover:border-amber-400 transition-all duration-300 hover:shadow-xl hover:shadow-amber-500/20 transform hover:-translate-y-2 cursor-pointer"
+                  className="group relative p-8 rounded-2xl border border-amber-200/70 dark:border-amber-400/40 bg-card shadow-lg shadow-amber-500/10 transition-all duration-300 hover:-translate-y-2 hover:border-amber-400/70 dark:hover:border-amber-300/70 hover:shadow-amber-500/20 cursor-pointer"
                 >
                   <div className="text-5xl mb-4 text-center">{topic.icon}</div>
                   <h3 className="text-xl font-bold text-foreground mb-2 text-center">
@@ -88,7 +88,7 @@ export default function MathPage() {
                   <p className="text-sm text-muted-foreground text-center">
                     {language === "en" ? topic.descEn : topic.descBn}
                   </p>
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-amber-500/15 via-transparent to-transparent dark:from-amber-300/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </div>
               ))}
             </div>
@@ -96,11 +96,11 @@ export default function MathPage() {
         </section>
 
         {/* Features Section */}
-        <section className="py-16 px-4 bg-gradient-to-b from-white to-amber-50/30">
+        <section className="py-16 px-4 bg-gradient-to-b from-background via-muted/15 to-muted/5 dark:from-background dark:via-background/80 dark:to-background">
           <div className="max-w-7xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="text-center p-6">
-                <BookOpen className="w-12 h-12 text-amber-600 mx-auto mb-4" />
+                <BookOpen className="w-12 h-12 text-amber-600 dark:text-amber-300 mx-auto mb-4" />
                 <h3 className="text-xl font-bold mb-2">{language === "en" ? "Interactive Lessons" : "ইন্টারঅ্যাক্টিভ পাঠ"}</h3>
                 <p className="text-muted-foreground">
                   {language === "en"
@@ -109,7 +109,7 @@ export default function MathPage() {
                 </p>
               </div>
               <div className="text-center p-6">
-                <BarChart3 className="w-12 h-12 text-amber-600 mx-auto mb-4" />
+                <BarChart3 className="w-12 h-12 text-amber-600 dark:text-amber-300 mx-auto mb-4" />
                 <h3 className="text-xl font-bold mb-2">{language === "en" ? "Progress Tracking" : "অগ্রগতি ট্র্যাকিং"}</h3>
                 <p className="text-muted-foreground">
                   {language === "en"
@@ -118,7 +118,7 @@ export default function MathPage() {
                 </p>
               </div>
               <div className="text-center p-6">
-                <Sparkles className="w-12 h-12 text-amber-600 mx-auto mb-4" />
+                <Sparkles className="w-12 h-12 text-amber-600 dark:text-amber-300 mx-auto mb-4" />
                 <h3 className="text-xl font-bold mb-2">{language === "en" ? "Real Examples" : "বাস্তব উদাহরণ"}</h3>
                 <p className="text-muted-foreground">
                   {language === "en"

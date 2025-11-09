@@ -1,5 +1,7 @@
 "use client"
-import { Globe } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Globe, Moon, Sun } from "lucide-react"
+import { useTheme } from "next-themes"
 
 interface HeaderProps {
   language: "en" | "bn"
@@ -9,8 +11,26 @@ interface HeaderProps {
 }
 
 const Header = ({ language, setLanguage, mobileMenuOpen, setMobileMenuOpen }: HeaderProps) => {
+  const { resolvedTheme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const toggleTheme = () => {
+    if (!mounted) return
+    setTheme(resolvedTheme === "dark" ? "light" : "dark")
+  }
+
+  const isDark = resolvedTheme === "dark"
+
   return (
-    <header id="navigation" className="sticky top-0 z-50 w-full bg-gradient-to-b from-white/95 via-white/90 to-white/80 backdrop-blur-xl border-b border-blue-200/30 shadow-lg hover:shadow-xl transition-shadow duration-300" role="banner">
+    <header
+      id="navigation"
+      className="sticky top-0 z-50 w-full bg-gradient-to-b from-background/95 via-background/92 to-background/88 dark:from-background/80 dark:via-background/75 dark:to-background/70 backdrop-blur-xl border-b border-blue-200/30 dark:border-border/70 shadow-lg hover:shadow-xl transition-shadow duration-300"
+      role="banner"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -26,7 +46,23 @@ const Header = ({ language, setLanguage, mobileMenuOpen, setMobileMenuOpen }: He
           </div>
 
           {/* Language Toggle */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              disabled={!mounted}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors text-foreground text-sm font-medium focus:outline-none focus:ring-4 focus:ring-blue-300 focus:bg-muted/90 disabled:opacity-60"
+              aria-label={mounted ? (isDark ? "Switch to light theme" : "Switch to dark theme") : "Toggle theme"}
+              aria-pressed={mounted ? isDark : undefined}
+            >
+              {mounted ? (
+                isDark ? <Moon size={16} aria-hidden="true" /> : <Sun size={16} aria-hidden="true" />
+              ) : (
+                <Sun size={16} aria-hidden="true" className="opacity-0" />
+              )}
+              <span className="hidden sm:inline">{mounted ? (isDark ? "Dark" : "Light") : "Theme"}</span>
+            </button>
+
             <button
               onClick={() => setLanguage(language === "en" ? "bn" : "en")}
               onKeyDown={(e) => {

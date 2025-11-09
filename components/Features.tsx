@@ -43,7 +43,10 @@ const Features = ({ language }: FeaturesProps) => {
   ]
 
   return (
-    <section className="py-24 px-4 bg-gradient-to-b from-slate-50/50 to-white" aria-labelledby="features-heading">
+    <section
+      className="py-24 px-4 bg-gradient-to-b from-background via-muted/20 to-muted/10 dark:from-background dark:via-background/80 dark:to-background"
+      aria-labelledby="features-heading"
+    >
       <h2 id="features-heading" className="sr-only">{language === "en" ? "Features" : "বৈশিষ্ট্যসমূহ"}</h2>
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8" role="list" aria-label={language === "en" ? "Platform features" : "প্ল্যাটফর্ম বৈশিষ্ট্যসমূহ"}>
@@ -52,29 +55,29 @@ const Features = ({ language }: FeaturesProps) => {
             return (
               <div
                 key={idx}
-                className="group relative p-8 rounded-xl bg-white border border-slate-200 hover:border-transparent transition-all duration-300 hover:bg-gradient-to-br hover:from-white hover:to-blue-50/50 hover:shadow-2xl hover:shadow-blue-500/15 transform hover:-translate-y-3 overflow-hidden"
+                className="group relative p-8 rounded-xl border border-border/70 bg-card transition-all duration-300 overflow-hidden shadow-lg shadow-primary/5 hover:-translate-y-3 hover:shadow-primary/20"
                 style={{ animation: `slide-up 0.6s ease-out ${idx * 0.1}s backwards` }}
                 role="listitem"
                 aria-labelledby={`feature-title-${idx}`}
                 aria-describedby={`feature-desc-${idx}`}
               >
                 <div
-                  className={`absolute -top-8 -right-8 w-32 h-32 bg-gradient-to-bl ${feature.color} rounded-full opacity-0 group-hover:opacity-25 transition-opacity duration-300 blur-lg`}
+                  className={`absolute -top-12 -right-12 w-36 h-36 bg-gradient-to-bl ${feature.color} rounded-full opacity-20 group-hover:opacity-40 transition-opacity duration-500 blur-3xl pointer-events-none`}
                   aria-hidden="true"
                 />
 
                 <div
-                  className={`inline-flex items-center justify-center w-14 h-14 rounded-lg bg-gradient-to-br ${feature.color} mb-4 transition-all duration-300 group-hover:shadow-lg group-hover:scale-125`}
+                  className={`inline-flex items-center justify-center w-14 h-14 rounded-lg bg-gradient-to-br ${feature.color} mb-4 transition-all duration-300 group-hover:shadow-lg group-hover:scale-125 shadow-primary/10`}
                   role="img"
                   aria-label={`${language === "en" ? feature.titleEn : feature.titleBn} icon`}
                 >
                   <Icon className="text-white w-7 h-7" aria-hidden="true" />
                 </div>
 
-                <h3 id={`feature-title-${idx}`} className="text-lg font-semibold text-slate-900 mb-2">
+                <h3 id={`feature-title-${idx}`} className="text-lg font-semibold text-foreground mb-2">
                   {language === "en" ? feature.titleEn : feature.titleBn}
                 </h3>
-                <p id={`feature-desc-${idx}`} className="text-sm text-slate-600 leading-relaxed">
+                <p id={`feature-desc-${idx}`} className="text-sm text-muted-foreground leading-relaxed">
                   {language === "en" ? feature.descEn : feature.descBn}
                 </p>
               </div>
