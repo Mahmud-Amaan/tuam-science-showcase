@@ -196,9 +196,10 @@ async function callGroq(prompt: string, apiKey: string, model: string) {
       temperature: 0.7,
       max_completion_tokens: 1024,
       top_p: 0.9,
+      stream: true,
     });
 
-    return completion.choices?.[0]?.message?.content ?? "";
+    return completion;
   } catch (e) {
     console.error("Groq call failed", e);
     throw e;
@@ -251,9 +252,33 @@ Instructions:
 - Use Markdown formatting for better readability
 - Keep it concise but informative`;
 
-    const aiReply = await callGroq(prompt, key, model);
+    const aiStream = await callGroq(prompt, key, model);
 
-    return NextResponse.json({ reply: aiReply, intent: { type: "answer" } });
+    // Create a streaming response
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of aiStream) {
+            const content = chunk.choices[0]?.delta?.content || "";
+            if (content) {
+              controller.enqueue(encoder.encode(content));
+            }
+          }
+        } catch (error) {
+          controller.error(error);
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Transfer-Encoding': 'chunked',
+      },
+    });
 
     // Fallback responses for common topics
     const fallbackAnswersEn: Record<string, string> = {

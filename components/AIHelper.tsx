@@ -453,8 +453,30 @@ export default function AIHelper() {
         body: JSON.stringify({ message: text, language: lang }),
       })
       if (!res.ok) throw new Error("API error")
-      const data: { reply: string; intent?: Intent } = await res.json()
-      return data
+      
+      // Check if response is streaming (plain text) or JSON (navigation intent)
+      const contentType = res.headers.get("content-type")
+      
+      if (contentType?.includes("text/plain")) {
+        // Handle streaming response
+        const reader = res.body?.getReader()
+        const decoder = new TextDecoder()
+        let fullText = ""
+        
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            fullText += decoder.decode(value, { stream: true })
+          }
+        }
+        
+        return { reply: fullText, intent: { type: "answer" as const } }
+      } else {
+        // Handle JSON response (navigation intent)
+        const data = await res.json()
+        return { reply: data.reply, intent: data.intent }
+      }
     } catch (e) {
       console.error("fetchReply error", e)
       const fallback = lang === "bn"
@@ -468,22 +490,74 @@ export default function AIHelper() {
     if (!text.trim()) return
     const trimmed = text.trim()
     setMessages(m => [...m, { role: "user", text: trimmed, time: Date.now() }])
-    setMessages(m => [...m, { role: "bot", text: lang === "en" ? "Thinking..." : "চিন্তা হচ্ছে...", time: Date.now() }])
-    const data = await fetchReply(trimmed)
-    setMessages(m => {
-      const copy = [...m]
-      for (let i = copy.length - 1; i >= 0; i--) {
-        if (copy[i].role === "bot" && (copy[i].text === "Thinking..." || copy[i].text === "চিন্তা হচ্ছে...")) {
-          copy.splice(i, 1)
-          break
+    
+    // Add initial "thinking" message
+    const thinkingMsg = { role: "bot" as const, text: "", time: Date.now() }
+    setMessages(m => [...m, thinkingMsg])
+    
+    try {
+      const res = await fetch("/api/educator", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: trimmed, language: lang }),
+      })
+      
+      if (!res.ok) throw new Error("API error")
+      
+      const contentType = res.headers.get("content-type")
+      
+      if (contentType?.includes("text/plain")) {
+        // Handle streaming response with real-time updates
+        const reader = res.body?.getReader()
+        const decoder = new TextDecoder()
+        let accumulatedText = ""
+        
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            
+            const chunk = decoder.decode(value, { stream: true })
+            accumulatedText += chunk
+            
+            // Update the message in real-time
+            setMessages(m => {
+              const copy = [...m]
+              const lastMsg = copy[copy.length - 1]
+              if (lastMsg && lastMsg.role === "bot") {
+                lastMsg.text = accumulatedText
+              }
+              return copy
+            })
+            
+            // Small delay to make streaming visible
+            await new Promise(resolve => setTimeout(resolve, 50))
+          }
+        }
+      } else {
+        // Handle JSON response (navigation intent)
+        const data = await res.json()
+        setMessages(m => {
+          const copy = [...m]
+          copy[copy.length - 1] = { role: "bot", text: data.reply, time: Date.now() }
+          return copy
+        })
+        
+        if (data.intent?.type === "navigate" && data.intent.target) {
+          setTimeout(() => { try { router.push(data.intent!.target!) } catch {} }, 600)
         }
       }
-      copy.push({ role: "bot", text: data.reply, time: Date.now() })
-      return copy
-    })
-
-    if (data.intent?.type === "navigate" && data.intent.target) {
-      setTimeout(() => { try { router.push(data.intent!.target!) } catch {} }, 600)
+    } catch (e) {
+      console.error("handleSubmit error", e)
+      const fallback = lang === "bn"
+        ? "দুঃখিত — কিছু সমস্যা হয়েছে। আবার বলুন বা টাইপ করুন।"
+        : "Sorry — something went wrong. Please try again or type your question."
+      
+      setMessages(m => {
+        const copy = [...m]
+        copy[copy.length - 1] = { role: "bot", text: fallback, time: Date.now() }
+        return copy
+      })
     }
   }
 
