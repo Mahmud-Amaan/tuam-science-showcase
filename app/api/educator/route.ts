@@ -195,7 +195,7 @@ async function callGroq(prompt: string, apiKey: string, model: string) {
         { role: "user", content: prompt },
       ],
       temperature: 0.7,
-      max_completion_tokens: 1024,
+      max_completion_tokens: 512,
       top_p: 0.9,
       stream: true,
     });
