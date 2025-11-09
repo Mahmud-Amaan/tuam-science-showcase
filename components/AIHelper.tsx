@@ -80,13 +80,33 @@ export default function AIHelper() {
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
   const lastSpokenRef = useRef<string | null>(null)
   const shouldResumeMicRef = useRef(false)
+  const lastSubmittedTranscriptRef = useRef<string>("") // Track last submitted text
+  const isSubmittingRef = useRef(false) // Prevent simultaneous submissions
 
   // Detect mobile device and iOS specifically
   const isMobile = typeof window !== "undefined" && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
   const isIOS = typeof window !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent)
 
   // Initialize component on client-side only
-  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => { 
+    setMounted(true)
+    // Restore mic and speaker state from localStorage
+    if (typeof window !== "undefined") {
+      const savedMicState = localStorage.getItem("ai_helper_mic_enabled")
+      const savedSpeakerState = localStorage.getItem("ai_helper_speaker_enabled")
+      
+      if (savedSpeakerState === "true") {
+        setSpeakerEnabled(true)
+      }
+      
+      // Auto-start mic if it was previously enabled
+      if (savedMicState === "true") {
+        setTimeout(() => {
+          startMic().catch(console.error)
+        }, 500)
+      }
+    }
+  }, [])
 
   // Cycle through bubble texts
   useEffect(() => {
@@ -166,16 +186,16 @@ export default function AIHelper() {
 
   const handleClose = () => {
     setIsClosing(true)
-    setSpeechToSpeechMode(false)
-    stopMic()
-    if (typeof window !== "undefined") {
+    // Don't stop mic or speaker when closing sidebar - they should persist
+    // Only cancel current speech utterance if one is playing
+    if (typeof window !== "undefined" && utteranceRef.current) {
       window.speechSynthesis?.cancel()
     }
     setTimeout(() => {
       setOpen(false)
       setIsClosing(false)
     }, 350)
-  }
+  };
 
   const stopMic = () => {
     console.log("[Mic] Stopping microphone...");
@@ -201,6 +221,8 @@ export default function AIHelper() {
     setListening(false);
     isRestartingRef.current = false;
     currentTranscriptRef.current = "";
+    lastSubmittedTranscriptRef.current = ""; // Reset last submitted
+    isSubmittingRef.current = false; // Reset submission lock
     console.log("[Mic] Stopped");
   };
 
@@ -269,12 +291,19 @@ export default function AIHelper() {
 
     const recog = new SpeechRecognition();
     recog.continuous = true;
-    recog.interimResults = false;
+    recog.interimResults = true; // Enable interim results for better responsiveness
     recog.lang = lang === "bn" ? "bn-BD" : "en-US";
     recog.maxAlternatives = 1;
+    
+    // Set shorter timeout for faster submission
+    if ('speechRecognitionParams' in recog) {
+      (recog as any).speechRecognitionParams = { continuous: true };
+    }
 
-    // Reset transcript
+    // Reset transcript and duplicate tracking
     currentTranscriptRef.current = "";
+    lastSubmittedTranscriptRef.current = "";
+    isSubmittingRef.current = false;
 
     recog.onstart = () => {
       console.log("[Mic] Recognition started");
@@ -288,12 +317,61 @@ export default function AIHelper() {
     };
 
     recog.onresult = (event: any) => {
-      // Only take the last result
-      const last = event.results[event.results.length - 1];
-      if (last.isFinal) {
-        const transcript = last[0].transcript.trim();
-        console.log("[Mic] Final transcript:", transcript);
-        handleSubmit(transcript, true);
+      console.log("[Mic] Result event:", event.results.length, "results, starting from index:", event.resultIndex);
+      
+      // Auto-open sidebar when speech is detected
+      if (!open) {
+        console.log("[Mic] Opening sidebar due to speech detection");
+        setOpen(true);
+      }
+      
+      // IMPORTANT: Only process NEW results starting from resultIndex
+      // This prevents processing the same results multiple times
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        
+        if (result.isFinal) {
+          const transcript = result[0].transcript.trim();
+          console.log("[Mic] Final transcript received:", transcript);
+          
+          if (!transcript) {
+            console.log("[Mic] Empty transcript, skipping");
+            continue;
+          }
+          
+          // Duplicate prevention: Check if this is the same as last submitted
+          if (transcript === lastSubmittedTranscriptRef.current) {
+            console.log("[Mic] Duplicate detected, skipping:", transcript);
+            continue;
+          }
+          
+          // Submission lock: Prevent multiple simultaneous submissions
+          if (isSubmittingRef.current) {
+            console.log("[Mic] Already submitting, skipping:", transcript);
+            continue;
+          }
+          
+          // All checks passed - submit the transcript
+          console.log("[Mic] ✅ Submitting transcript:", transcript);
+          isSubmittingRef.current = true;
+          lastSubmittedTranscriptRef.current = transcript;
+          
+          // Submit immediately
+          handleSubmit(transcript, true);
+          
+          // Release submission lock quickly to allow fast follow-up
+          setTimeout(() => {
+            isSubmittingRef.current = false;
+            console.log("[Mic] Submission lock released");
+          }, 300);
+          
+        } else {
+          // Log interim results for debugging
+          const interim = result[0].transcript;
+          if (interim) {
+            console.log("[Mic] Interim:", interim);
+          }
+        }
       }
     };
 
@@ -304,15 +382,16 @@ export default function AIHelper() {
       // Handle different error types
       switch (event.error) {
         case "no-speech":
-          // No speech detected - this is normal, just restart
+          // No speech detected - this is normal, just restart immediately
           if (speechModeRef.current && !isRestartingRef.current) {
-            console.log("[Mic] No speech detected, restarting...");
+            console.log("[Mic] No speech detected, restarting immediately...");
             isRestartingRef.current = true;
             setTimeout(() => {
               if (speechModeRef.current && recogRef.current === recog) {
                 try {
                   recog.start();
                   isRestartingRef.current = false;
+                  console.log("[Mic] Restarted after no-speech");
                 } catch (err) {
                   console.error("[Mic] Error restarting:", err);
                   isRestartingRef.current = false;
@@ -321,7 +400,7 @@ export default function AIHelper() {
               } else {
                 isRestartingRef.current = false;
               }
-            }, 1000);
+            }, 100);
           }
           break;
           
@@ -377,44 +456,62 @@ export default function AIHelper() {
     };
 
     recog.onend = () => {
-      console.log("[Mic] Recognition ended");
+      console.log("[Mic] Recognition ended, speechMode:", speechModeRef.current, "isRestarting:", isRestartingRef.current);
       setListening(false);
       
       // Auto-restart if still in speech mode
       if (speechModeRef.current && recogRef.current === recog && !isRestartingRef.current) {
-        console.log("[Mic] Auto-restarting...");
+        console.log("[Mic] Auto-restarting in 100ms...");
         isRestartingRef.current = true;
         setTimeout(() => {
           if (speechModeRef.current && recogRef.current === recog) {
             try {
               recog.start();
               isRestartingRef.current = false;
+              console.log("[Mic] ✅ Successfully restarted");
             } catch (err: any) {
-              console.error("[Mic] Error restarting recognition:", err);
+              console.error("[Mic] ❌ Error restarting recognition:", err);
               isRestartingRef.current = false;
-              if (speechModeRef.current) {
-                if (err.message?.includes("started") || err.message?.includes("already")) {
-                  stopMic();
-                  setTimeout(() => startMic(), 500);
-                } else {
-                  // Try one more time with same instance
-                  setTimeout(() => {
-                    if (speechModeRef.current && recogRef.current === recog) {
-                      try {
-                        recog.start();
-                      } catch (err2) {
-                        stopMic();
-                        setTimeout(() => startMic(), 500);
-                      }
+              
+              if (!speechModeRef.current) {
+                console.log("[Mic] Speech mode disabled during restart, stopping");
+                return;
+              }
+              
+              // Handle "already started" error
+              if (err.message?.includes("started") || err.message?.includes("already")) {
+                console.log("[Mic] Recognition already started, resetting...");
+                stopMic();
+                setTimeout(() => {
+                  if (speechModeRef.current) {
+                    console.log("[Mic] Attempting fresh start...");
+                    startMic();
+                  }
+                }, 500);
+              } else {
+                // Try one more time with same instance
+                console.log("[Mic] Attempting retry in 500ms...");
+                setTimeout(() => {
+                  if (speechModeRef.current && recogRef.current === recog) {
+                    try {
+                      recog.start();
+                      console.log("[Mic] ✅ Retry successful");
+                    } catch (err2) {
+                      console.error("[Mic] ❌ Retry failed, full reset");
+                      stopMic();
+                      setTimeout(() => {
+                        if (speechModeRef.current) startMic();
+                      }, 500);
                     }
-                  }, 500);
-                }
+                  }
+                }, 500);
               }
             }
           } else {
             isRestartingRef.current = false;
+            console.log("[Mic] State changed during restart delay, aborting restart");
           }
-        }, 300);
+        }, 200);
       } else if (!speechModeRef.current) {
         // Clean up if mode was turned off
         console.log("[Mic] Mode turned off, cleaning up");
@@ -458,9 +555,17 @@ export default function AIHelper() {
   const toggleSpeechToSpeech = () => {
     if (listening) {
       stopMic();
+      // Save state to localStorage
+      if (typeof window !== "undefined") {
+        localStorage.setItem("ai_helper_mic_enabled", "false")
+      }
     } else {
       // Start mic immediately without async/await
       startMic().catch(console.error);
+      // Save state to localStorage
+      if (typeof window !== "undefined") {
+        localStorage.setItem("ai_helper_mic_enabled", "true")
+      }
     }
   };
 
@@ -478,6 +583,8 @@ export default function AIHelper() {
         window.speechSynthesis.cancel()
         lastSpokenRef.current = null
       }
+      // Save state to localStorage
+      localStorage.setItem("ai_helper_speaker_enabled", next.toString())
       return next
     })
   }
@@ -485,8 +592,8 @@ export default function AIHelper() {
   function fetchReply(text: string, onChunk?: (chunk: string) => void) {
     return new Promise<{ reply: string; intent?: Intent }>(async (resolve) => {
       try {
-        // Send last 10 messages for context (5 exchanges)
-        const recentMessages = messages.slice(-10).map(m => ({
+        // Send last 4 messages for context (2 exchanges) - optimized to reduce token usage
+        const recentMessages = messages.slice(-4).map(m => ({
           role: m.role === "user" ? "user" : "assistant",
           content: m.text
         }));
@@ -779,6 +886,23 @@ export default function AIHelper() {
             }}
           >
             <RobotIcon />
+            {/* Microphone active indicator */}
+            {listening && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: 4,
+                  right: 4,
+                  width: 16,
+                  height: 16,
+                  borderRadius: "50%",
+                  background: "#ef4444",
+                  border: "2px solid white",
+                  animation: "pulse 1.5s infinite",
+                  zIndex: 10001,
+                }}
+              />
+            )}
           </button>
           <div
             style={{
@@ -1222,12 +1346,12 @@ export default function AIHelper() {
                           strong: ({children}) => (
                             <strong style={{
                               fontWeight: "700",
-                              color: "#0f5132"
+                              color: isDark ? "#34c759" : "#2ecc71"
                             }}>{children}</strong>
                           ),
                           blockquote: ({children}) => (
                             <blockquote style={{
-                              borderLeft: `3px solid #0f5132`,
+                              borderLeft: `3px solid ${isDark ? "#34c759" : "#2ecc71"}`,
                               paddingLeft: "1em",
                               marginLeft: "0",
                               marginTop: "0.5em",
@@ -1264,18 +1388,24 @@ export default function AIHelper() {
               <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
                 <button
                   onClick={toggleSpeechToSpeech}
+                  title={listening 
+                    ? (lang === "en" ? "Stop microphone" : "মাইক্রোফোন বন্ধ করুন")
+                    : (lang === "en" ? "Start microphone" : "মাইক্রোফোন চালু করুন")
+                  }
                   style={{
                     width: "44px",
                     height: "44px",
                     borderRadius: "50%",
-                    border: isDark ? "2px solid #334155" : "2px solid #e2e8f0",
+                    border: listening ? "2px solid #34c759" : isDark ? "2px solid #334155" : "2px solid #e2e8f0",
                     background: listening ? "#34c759" : isDark ? "#1e293b" : "#ffffff",
                     color: listening ? "white" : "#64748b",
                     cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    boxShadow: listening ? "0 1px 3px rgba(0, 0, 0, 0.1)" : "0 1px 3px rgba(0, 0, 0, 0.1)",
+                    boxShadow: listening ? "0 0 0 4px rgba(52, 199, 89, 0.2), 0 4px 12px rgba(52, 199, 89, 0.3)" : "0 1px 3px rgba(0, 0, 0, 0.1)",
+                    transition: "all 0.2s",
+                    position: "relative",
                   }}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1284,6 +1414,21 @@ export default function AIHelper() {
                     <line x1="12" y1="19" x2="12" y2="23"/>
                     <line x1="8" y1="23" x2="16" y2="23"/>
                   </svg>
+                  {listening && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        borderRadius: "50%",
+                        border: "2px solid #34c759",
+                        animation: "pulse-ring 1.5s infinite",
+                        pointerEvents: "none",
+                      }}
+                    />
+                  )}
                 </button>
               </div>
             )}

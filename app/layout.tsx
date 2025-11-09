@@ -21,11 +21,11 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "Virtual Lab | Interactive Science Learning Platform",
+  title: "Virtual Lab",
   description:
     "Explore science like never before! Virtual Lab brings interactive experiments in physics, chemistry, and biology — aligned with the National curriculum. Learn, visualize, and have fun with virtual science labs.",
   openGraph: {
-    title: "Virtual Lab | Interactive Science Learning",
+    title: "Virtual Lab",
     description:
       "Dive into science experiments and simulations made for students in Bangladesh. Learn physics, chemistry, and biology through interactive virtual labs.",
     url: "https://tuam-science.vercel.app/",
