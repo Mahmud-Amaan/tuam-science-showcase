@@ -44,6 +44,10 @@ const navigationData = [
   { name: "vector", url: "/math/vector" },
   { name: "ভেক্টর", url: "/math/vector" },
 
+  { name: "trigonometry", url: "/math/trigonometry" },
+  { name: "trigonometry tour", url: "/math/trigonometry" },
+  { name: "ত্রিকোণমিতি", url: "/math/trigonometry" },
+
   // Chemistry subpages
   { name: "atoms", url: "/chemistry/atoms" },
   { name: "পরমাণু", url: "/chemistry/atoms" },
@@ -57,6 +61,10 @@ const navigationData = [
 
   { name: "states", url: "/chemistry/states" },
   { name: "অবস্থা", url: "/chemistry/states" },
+
+  { name: "periodic table", url: "/chemistry/periodic-table" },
+  { name: "interactive periodic table", url: "/chemistry/periodic-table" },
+  { name: "পর্যায় সারণি", url: "/chemistry/periodic-table" },
 
   // Biology subpages
   { name: "anatomy", url: "/biology/anatomy" },
