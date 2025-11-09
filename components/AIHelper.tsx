@@ -27,8 +27,6 @@ export default function AIHelper() {
   const [sidebarWidth, setSidebarWidth] = useState(420)
   const [isResizing, setIsResizing] = useState(false)
   const [listening, setListening] = useState(false);
-  const [currentBubbleTextIndex, setCurrentBubbleTextIndex] = useState(0);
-  const [audioLevel, setAudioLevel] = useState(0);
 
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const resizeStartX = useRef(0)
@@ -56,9 +54,6 @@ export default function AIHelper() {
   const isRestartingRef = useRef(false)
   const speechModeRef = useRef(false)
   const recognitionStartedRef = useRef(false)
-  const audioContextRef = useRef<AudioContext | null>(null)
-  const analyserRef = useRef<AnalyserNode | null>(null)
-  const animationFrameRef = useRef<number | null>(null)
   
   // Detect mobile device and iOS specifically
   const isMobile = typeof window !== "undefined" && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
@@ -70,11 +65,11 @@ export default function AIHelper() {
   // Cycle through bubble texts
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentBubbleTextIndex((prevIndex) => (prevIndex + 1) % bubbleTexts.length);
+      // Removed
     }, 3000); // Change text every 3 seconds
 
     return () => clearInterval(interval);
-  }, [bubbleTexts.length]);
+  }, []);
 
   // Load messages from localStorage on first mount; if none, seed with greeting
   useEffect(() => {
@@ -155,7 +150,6 @@ export default function AIHelper() {
 
   const stopMic = () => {
     console.log("[Mic] Stopping microphone...");
-    stopAudioLevelDetection();
     if (recogRef.current) {
       try {
         recogRef.current.onend = null; // Prevent restart
@@ -179,55 +173,6 @@ export default function AIHelper() {
     isRestartingRef.current = false;
     currentTranscriptRef.current = "";
     console.log("[Mic] Stopped");
-  };
-
-  const startAudioLevelDetection = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      analyserRef.current = audioContextRef.current.createAnalyser();
-      const source = audioContextRef.current.createMediaStreamSource(stream);
-      source.connect(analyserRef.current);
-      analyserRef.current.fftSize = 256;
-
-      const detectAudioLevel = () => {
-        if (!analyserRef.current) return;
-        
-        const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-        analyserRef.current.getByteFrequencyData(dataArray);
-        
-        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-        const normalizedLevel = Math.min(100, (average / 128) * 100);
-        
-        setAudioLevel(normalizedLevel);
-        
-        if (speechModeRef.current) {
-          animationFrameRef.current = requestAnimationFrame(detectAudioLevel);
-        }
-      };
-
-      detectAudioLevel();
-      
-      return stream;
-    } catch (err) {
-      console.error("[Mic] Audio level detection error:", err);
-      return null;
-    }
-  };
-
-  const stopAudioLevelDetection = () => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
-    if (analyserRef.current) {
-      analyserRef.current = null;
-    }
-    setAudioLevel(0);
   };
 
   const startMic = async () => {
@@ -295,7 +240,7 @@ export default function AIHelper() {
 
     const recog = new SpeechRecognition();
     recog.continuous = true;
-    recog.interimResults = true;
+    recog.interimResults = false;
     recog.lang = lang === "bn" ? "bn-BD" : "en-US";
     recog.maxAlternatives = 1;
 
@@ -314,22 +259,12 @@ export default function AIHelper() {
     };
 
     recog.onresult = (event: any) => {
-      let finalTranscript = "";
-
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += transcript + " ";
-        }
-      }
-
-      finalTranscript = finalTranscript.trim();
-      
-      // Process final results
-      if (finalTranscript && finalTranscript !== currentTranscriptRef.current) {
-        console.log("[Mic] Final transcript:", finalTranscript);
-        currentTranscriptRef.current = finalTranscript;
-        handleSubmit(finalTranscript, true);
+      // Only take the last result
+      const last = event.results[event.results.length - 1];
+      if (last.isFinal) {
+        const transcript = last[0].transcript.trim();
+        console.log("[Mic] Final transcript:", transcript);
+        handleSubmit(transcript, true);
       }
     };
 
@@ -465,12 +400,6 @@ export default function AIHelper() {
     speechModeRef.current = true;
     setSpeechToSpeechMode(true);
 
-    // Start audio level detection
-    startAudioLevelDetection();
-
-    // Reset recognition started flag
-    recognitionStartedRef.current = false;
-
     try {
       console.log("[Mic] Starting recognition...");
       recog.start();
@@ -498,10 +427,11 @@ export default function AIHelper() {
   };
 
   const toggleSpeechToSpeech = () => {
-    if (speechToSpeechMode) {
+    if (listening) {
       stopMic();
     } else {
-      startMic();
+      // Start mic immediately without async/await
+      startMic().catch(console.error);
     }
   };
 
@@ -537,45 +467,49 @@ export default function AIHelper() {
   }, [isMobile])
 
   // ---- MESSAGE HANDLING ----
-  async function fetchReply(text: string) {
-    try {
-      const res = await fetch("/api/educator", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, language: lang }),
-      })
-      if (!res.ok) throw new Error("API error")
-      
-      // Check if response is streaming (plain text) or JSON (navigation intent)
-      const contentType = res.headers.get("content-type")
-      
-      if (contentType?.includes("text/plain")) {
-        // Handle streaming response
-        const reader = res.body?.getReader()
-        const decoder = new TextDecoder()
-        let fullText = ""
+  function fetchReply(text: string, onChunk?: (chunk: string) => void) {
+    return new Promise<{ reply: string; intent?: Intent }>(async (resolve) => {
+      try {
+        const res = await fetch("/api/educator", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text, language: lang }),
+        });
         
-        if (reader) {
-          while (true) {
-            const { done, value } = await reader.read()
-            if (done) break
-            fullText += decoder.decode(value, { stream: true })
+        if (!res.ok) throw new Error("API error");
+        
+        const contentType = res.headers.get("content-type");
+        
+        if (contentType?.includes("text/plain")) {
+          const reader = res.body?.getReader();
+          const decoder = new TextDecoder();
+          let fullText = "";
+          
+          if (reader) {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              const chunk = decoder.decode(value, { stream: true });
+              fullText += chunk;
+              if (onChunk) {
+                onChunk(chunk);
+              }
+            }
           }
+          
+          resolve({ reply: fullText });
+        } else {
+          const data = await res.json();
+          resolve({ reply: data.reply, intent: data.intent });
         }
-        
-        return { reply: fullText, intent: { type: "answer" as const } }
-      } else {
-        // Handle JSON response (navigation intent)
-        const data = await res.json()
-        return { reply: data.reply, intent: data.intent }
+      } catch (e) {
+        console.error("fetchReply error", e);
+        const fallback = lang === "bn"
+          ? "দুঃখিত — কিছু সমস্যা হয়েছে। আবার বলুন বা টাইপ করুন।"
+          : "Sorry — something went wrong. Please try again or type your question.";
+        resolve({ reply: fallback });
       }
-    } catch (e) {
-      console.error("fetchReply error", e)
-      const fallback = lang === "bn"
-        ? "দুঃখিত — কিছু সমস্যা হয়েছে। আবার বলুন বা টাইপ করুন।"
-        : "Sorry — something went wrong. Please try again or type your question."
-      return { reply: fallback, intent: { type: "answer" as const } }
-    }
+    });
   }
 
   const handleSubmit = async (text: string, fromMic = false) => {
@@ -588,62 +522,33 @@ export default function AIHelper() {
     setMessages(m => [...m, thinkingMsg])
     
     try {
-      const res = await fetch("/api/educator", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: trimmed, language: lang }),
-      })
-      
-      if (!res.ok) throw new Error("API error")
-      
-      const contentType = res.headers.get("content-type")
-      
-      if (contentType?.includes("text/plain")) {
-        // Handle streaming response with real-time updates
-        const reader = res.body?.getReader()
-        const decoder = new TextDecoder()
-        let accumulatedText = ""
-        
-        if (reader) {
-          while (true) {
-            const { done, value } = await reader.read()
-            if (done) break
-            
-            const chunk = decoder.decode(value, { stream: true })
-            accumulatedText += chunk
-            
-            // Update the message in real-time
-            setMessages(m => {
-              const copy = [...m]
-              const lastMsg = copy[copy.length - 1]
-              if (lastMsg && lastMsg.role === "bot") {
-                lastMsg.text = accumulatedText
-              }
-              return copy
-            })
-            
-            // Small delay to make streaming visible
-            await new Promise(resolve => setTimeout(resolve, 50))
-          }
-        }
-      } else {
-        // Handle JSON response (navigation intent)
-        const data = await res.json()
+      let fullReply = "";
+      const { reply, intent } = await fetchReply(trimmed, (chunk) => {
+        fullReply += chunk;
         setMessages(m => {
           const copy = [...m]
-          copy[copy.length - 1] = { role: "bot", text: data.reply, time: Date.now() }
+          copy[copy.length - 1] = { role: "bot", text: fullReply, time: Date.now() }
           return copy
         })
-        
-        if (data.intent?.type === "navigate" && data.intent.target) {
-          setTimeout(() => { try { router.push(data.intent!.target!) } catch {} }, 600)
-        }
+      });
+      
+      // If we didn't use streaming, set the full reply at once
+      if (!fullReply) {
+        setMessages(m => {
+          const copy = [...m]
+          copy[copy.length - 1] = { role: "bot", text: reply, time: Date.now() }
+          return copy
+        })
+      }
+      
+      if (intent?.type === "navigate" && intent.target) {
+        try { router.push(intent.target!) } catch {}
       }
     } catch (e) {
       console.error("handleSubmit error", e)
       const fallback = lang === "bn"
         ? "দুঃখিত — কিছু সমস্যা হয়েছে। আবার বলুন বা টাইপ করুন।"
-        : "Sorry — something went wrong. Please try again or type your question."
+        : "Sorry — something went wrong. Please try again or type your question.";
       
       setMessages(m => {
         const copy = [...m]
@@ -698,19 +603,19 @@ export default function AIHelper() {
               position: "absolute",
               bottom: 75,
               right: 10,
-              background: "linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%)",
+              background: "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)",
               color: "white",
               padding: "8px 12px",
               borderRadius: "16px",
               fontSize: "12px",
               fontWeight: 600,
               whiteSpace: "nowrap",
-              boxShadow: "0 4px 12px rgba(6, 182, 212, 0.3)",
+              boxShadow: "0 4px 12px rgba(52, 199, 89, 0.3)",
               animation: "bounce 2s infinite, fadeInOut 3s infinite",
               pointerEvents: "none",
             }}
           >
-            {bubbleTexts[currentBubbleTextIndex]}
+            {bubbleTexts[0]}
             <div
               style={{
                 position: "absolute",
@@ -718,9 +623,9 @@ export default function AIHelper() {
                 right: 20,
                 width: 12,
                 height: 12,
-                background: "linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%)",
+                background: "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)",
                 transform: "rotate(45deg)",
-                boxShadow: "2px 2px 4px rgba(6, 182, 212, 0.2)",
+                boxShadow: "2px 2px 4px rgba(52, 199, 89, 0.2)",
               }}
             />
           </div>
@@ -738,10 +643,10 @@ export default function AIHelper() {
               width: 72,
               height: 72,
               borderRadius: "50%",
-              background: "linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%)",
+              background: "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)",
               border: "3px solid rgba(255, 255, 255, 0.9)",
               boxShadow:
-                "0 16px 40px rgba(6, 182, 212, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 12px rgba(0, 0, 0, 0.15)",
+                "0 16px 40px rgba(52, 199, 89, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 12px rgba(0, 0, 0, 0.15)",
               color: "white",
               display: "flex",
               alignItems: "center",
@@ -756,12 +661,12 @@ export default function AIHelper() {
             onMouseEnter={(e) => {
               ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1.2) translateY(-10px)"
               ;(e.currentTarget as HTMLButtonElement).style.boxShadow =
-                "0 24px 48px rgba(6, 182, 212, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 10px 20px rgba(0, 0, 0, 0.2)"
+                "0 24px 48px rgba(52, 199, 89, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 10px 20px rgba(0, 0, 0, 0.2)"
             }}
             onMouseLeave={(e) => {
               ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1) translateY(0)"
               ;(e.currentTarget as HTMLButtonElement).style.boxShadow =
-                "0 16px 40px rgba(6, 182, 212, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 12px rgba(0, 0, 0, 0.15)"
+                "0 16px 40px rgba(52, 199, 89, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 12px rgba(0, 0, 0, 0.15)"
             }}
           >
             <RobotIcon />
@@ -774,7 +679,7 @@ export default function AIHelper() {
               right: 0,
               bottom: 0,
               borderRadius: "50%",
-              border: "3px solid #06b6d4",
+              border: "3px solid #2ecc71",
               animation: "pulse-ring 2s infinite",
               pointerEvents: "none",
             }}
@@ -908,11 +813,11 @@ export default function AIHelper() {
                 fontSize: "13px",
                 fontWeight: 600,
                 transition: "all 0.2s",
-                color: "#0ea5e9",
+                color: "#34c759",
               }}
               onMouseEnter={(e) => {
                 ;(e.currentTarget as HTMLButtonElement).style.background = "#f1f5f9"
-                ;(e.currentTarget as HTMLButtonElement).style.borderColor = "#0ea5e9"
+                ;(e.currentTarget as HTMLButtonElement).style.borderColor = "#34c759"
               }}
               onMouseLeave={(e) => {
                 ;(e.currentTarget as HTMLButtonElement).style.background = "#ffffff"
@@ -943,11 +848,11 @@ export default function AIHelper() {
                 fontSize: "13px",
                 fontWeight: 600,
                 transition: "all 0.2s",
-                color: "#06b6d4",
+                color: "#2ecc71",
               }}
               onMouseEnter={(e) => {
                 ;(e.currentTarget as HTMLButtonElement).style.background = "#f1f5f9"
-                ;(e.currentTarget as HTMLButtonElement).style.borderColor = "#06b6d4"
+                ;(e.currentTarget as HTMLButtonElement).style.borderColor = "#2ecc71"
               }}
               onMouseLeave={(e) => {
                 ;(e.currentTarget as HTMLButtonElement).style.background = "#ffffff"
@@ -982,7 +887,7 @@ export default function AIHelper() {
               }}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M18 6L6 18M6 6l12 12" />
+                <path d="M18 6L6 18M12 5l7 7-7 7" />
               </svg>
             </button>
           </div>
@@ -1016,7 +921,7 @@ export default function AIHelper() {
                       width: "32px",
                       height: "32px",
                       borderRadius: "50%",
-                      background: "linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%)",
+                      background: "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -1041,11 +946,11 @@ export default function AIHelper() {
                     maxWidth: m.role === "user" ? "85%" : "calc(100% - 40px)",
                     padding: "12px 16px",
                     borderRadius: m.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-                    background: m.role === "user" ? "linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%)" : "white",
+                    background: m.role === "user" ? "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)" : "white",
                     color: m.role === "user" ? "white" : "#1e293b",
                     boxShadow: m.role === "bot"
                       ? "0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)"
-                      : "0 1px 3px rgba(6, 182, 212, 0.1)",
+                      : "0 1px 3px rgba(52, 199, 89, 0.1)",
                     border: m.role === "bot" ? "1px solid #e2e8f0" : "none",
                     fontSize: "14px",
                     lineHeight: "1.6",
@@ -1098,34 +1003,6 @@ export default function AIHelper() {
             {/* Microphone Button */}
             {!isMobile && (
               <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                {/* Sound Animation Circles */}
-                {speechToSpeechMode && (
-                  <div style={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    pointerEvents: "none",
-                  }}>
-                    <div style={{
-                      position: "absolute",
-                      width: `${20 + audioLevel * 0.3}px`,
-                      height: `${20 + audioLevel * 0.3}px`,
-                      borderRadius: "50%",
-                      border: "2px solid rgba(14, 165, 233, 0.3)",
-                      animation: "pulse-ring 1.5s infinite",
-                    }} />
-                    <div style={{
-                      position: "absolute",
-                      width: `${15 + audioLevel * 0.2}px`,
-                      height: `${15 + audioLevel * 0.2}px`,
-                      borderRadius: "50%",
-                      border: "2px solid rgba(14, 165, 233, 0.5)",
-                      animation: "pulse-ring 1.5s infinite 0.3s",
-                    }} />
-                  </div>
-                )}
-                
                 <button
                   onClick={toggleSpeechToSpeech}
                   style={{
@@ -1133,30 +1010,13 @@ export default function AIHelper() {
                     height: "44px",
                     borderRadius: "50%",
                     border: "2px solid #e2e8f0",
-                    background: speechToSpeechMode ? "linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%)" : "#ffffff",
-                    color: speechToSpeechMode ? "white" : "#64748b",
+                    background: listening ? "#34c759" : "#ffffff",
+                    color: listening ? "white" : "#64748b",
                     cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    transition: "all 0.2s",
-                    boxShadow: speechToSpeechMode ? "0 4px 12px rgba(6, 182, 212, 0.3)" : "0 1px 3px rgba(0, 0, 0, 0.1)",
-                    position: "relative",
-                    zIndex: 1,
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!speechToSpeechMode) {
-                      ;(e.currentTarget as HTMLButtonElement).style.background = "#f1f5f9"
-                      ;(e.currentTarget as HTMLButtonElement).style.borderColor = "#0ea5e9"
-                      ;(e.currentTarget as HTMLButtonElement).style.color = "#0ea5e9"
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!speechToSpeechMode) {
-                      ;(e.currentTarget as HTMLButtonElement).style.background = "#ffffff"
-                      ;(e.currentTarget as HTMLButtonElement).style.borderColor = "#e2e8f0"
-                      ;(e.currentTarget as HTMLButtonElement).style.color = "#64748b"
-                    }
+                    boxShadow: listening ? "0 1px 3px rgba(0, 0, 0, 0.1)" : "0 1px 3px rgba(0, 0, 0, 0.1)",
                   }}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1182,7 +1042,6 @@ export default function AIHelper() {
                 border: "1.5px solid #e2e8f0",
                 outline: "none",
                 fontSize: "14px",
-                transition: "all 0.2s",
                 background: speechToSpeechMode ? "#f1f5f9" : "#f8fafc",
                 fontWeight: 500,
                 opacity: speechToSpeechMode ? 0.6 : 1,
@@ -1190,9 +1049,9 @@ export default function AIHelper() {
               }}
               onFocus={(e) => {
                 if (!speechToSpeechMode) {
-                  ;(e.currentTarget as HTMLInputElement).style.borderColor = "#0ea5e9"
+                  ;(e.currentTarget as HTMLInputElement).style.borderColor = "#34c759"
                   ;(e.currentTarget as HTMLInputElement).style.background = "#ffffff"
-                  ;(e.currentTarget as HTMLInputElement).style.boxShadow = "0 0 0 3px rgba(14, 165, 233, 0.1)"
+                  ;(e.currentTarget as HTMLInputElement).style.boxShadow = "0 0 0 3px rgba(52, 199, 89, 0.1)"
                 }
               }}
               onBlur={(e) => {
@@ -1214,27 +1073,23 @@ export default function AIHelper() {
                 padding: "12px 18px",
                 borderRadius: "10px",
                 border: "none",
-                background: speechToSpeechMode ? "#cbd5e1" : "linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%)",
+                background: speechToSpeechMode ? "#cbd5e1" : "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)",
                 color: "white",
                 cursor: speechToSpeechMode ? "not-allowed" : "pointer",
                 fontWeight: 600,
-                transition: "all 0.2s",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: speechToSpeechMode ? "none" : "0 4px 12px rgba(6, 182, 212, 0.2)",
+                boxShadow: speechToSpeechMode ? "none" : "0 4px 12px rgba(52, 199, 89, 0.2)",
                 opacity: speechToSpeechMode ? 0.6 : 1,
               }}
               onMouseEnter={(e) => {
                 if (!speechToSpeechMode) {
                   ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1.08)"
-                  ;(e.currentTarget as HTMLButtonElement).style.boxShadow = "0 8px 20px rgba(6, 182, 212, 0.3)"
+                  ;(e.currentTarget as HTMLButtonElement).style.boxShadow = "0 8px 20px rgba(52, 199, 89, 0.3)"
                 }
               }}
               onMouseLeave={(e) => {
                 if (!speechToSpeechMode) {
                   ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1)"
-                  ;(e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 12px rgba(6, 182, 212, 0.2)"
+                  ;(e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 12px rgba(52, 199, 89, 0.2)"
                 }
               }}
             >
@@ -1254,13 +1109,13 @@ export default function AIHelper() {
               bottom: 0,
               width: "6px",
               cursor: "col-resize",
-              background: isResizing ? "#0ea5e9" : "transparent",
+              background: isResizing ? "#34c759" : "transparent",
               transition: "background 0.2s",
               zIndex: 10000,
               userSelect: "none",
             }}
             onMouseEnter={(e) => {
-              ;(e.currentTarget as HTMLDivElement).style.background = "#0ea5e9"
+              ;(e.currentTarget as HTMLDivElement).style.background = "#34c759"
               ;(e.currentTarget as HTMLDivElement).style.opacity = "0.8"
             }}
             onMouseLeave={(e) => {
