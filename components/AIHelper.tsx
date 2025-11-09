@@ -20,6 +20,7 @@ export default function AIHelper() {
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
   const [open, setOpen] = useState(false)
+  const [isClosing, setIsClosing] = useState(false)
   const [speechToSpeechMode, setSpeechToSpeechMode] = useState(false)
   const [lang, setLang] = useState<"en" | "bn">("en")
   const [messages, setMessages] = useState<ChatMsg[]>([])
@@ -27,6 +28,7 @@ export default function AIHelper() {
   const [isResizing, setIsResizing] = useState(false)
   const [listening, setListening] = useState(false);
   const [currentBubbleTextIndex, setCurrentBubbleTextIndex] = useState(0);
+  const [audioLevel, setAudioLevel] = useState(0);
 
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const resizeStartX = useRef(0)
@@ -54,6 +56,9 @@ export default function AIHelper() {
   const isRestartingRef = useRef(false)
   const speechModeRef = useRef(false)
   const recognitionStartedRef = useRef(false)
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const animationFrameRef = useRef<number | null>(null)
   
   // Detect mobile device and iOS specifically
   const isMobile = typeof window !== "undefined" && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
@@ -138,10 +143,19 @@ export default function AIHelper() {
     }
   }, [isResizing])
 
-  // ---- MIC CONTROL LOGIC ----
+  const handleClose = () => {
+    setIsClosing(true)
+    setSpeechToSpeechMode(false)
+    stopMic()
+    setTimeout(() => {
+      setOpen(false)
+      setIsClosing(false)
+    }, 350)
+  }
 
   const stopMic = () => {
     console.log("[Mic] Stopping microphone...");
+    stopAudioLevelDetection();
     if (recogRef.current) {
       try {
         recogRef.current.onend = null; // Prevent restart
@@ -165,6 +179,55 @@ export default function AIHelper() {
     isRestartingRef.current = false;
     currentTranscriptRef.current = "";
     console.log("[Mic] Stopped");
+  };
+
+  const startAudioLevelDetection = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      analyserRef.current = audioContextRef.current.createAnalyser();
+      const source = audioContextRef.current.createMediaStreamSource(stream);
+      source.connect(analyserRef.current);
+      analyserRef.current.fftSize = 256;
+
+      const detectAudioLevel = () => {
+        if (!analyserRef.current) return;
+        
+        const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+        analyserRef.current.getByteFrequencyData(dataArray);
+        
+        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+        const normalizedLevel = Math.min(100, (average / 128) * 100);
+        
+        setAudioLevel(normalizedLevel);
+        
+        if (speechModeRef.current) {
+          animationFrameRef.current = requestAnimationFrame(detectAudioLevel);
+        }
+      };
+
+      detectAudioLevel();
+      
+      return stream;
+    } catch (err) {
+      console.error("[Mic] Audio level detection error:", err);
+      return null;
+    }
+  };
+
+  const stopAudioLevelDetection = () => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    if (analyserRef.current) {
+      analyserRef.current = null;
+    }
+    setAudioLevel(0);
   };
 
   const startMic = async () => {
@@ -402,6 +465,9 @@ export default function AIHelper() {
     speechModeRef.current = true;
     setSpeechToSpeechMode(true);
 
+    // Start audio level detection
+    startAudioLevelDetection();
+
     // Reset recognition started flag
     recognitionStartedRef.current = false;
 
@@ -599,13 +665,15 @@ export default function AIHelper() {
   }
 
   const RobotIcon = () => (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="4" y="6" width="16" height="12" rx="2" />
-      <circle cx="9" cy="11" r="1.5" />
-      <circle cx="15" cy="11" r="1.5" />
-      <path d="M6 18v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1" />
-      <rect x="8" y="2" width="8" height="3" rx="1" />
-    </svg>
+    <img 
+      src="/ai-icon.png" 
+      alt="AI Assistant"
+      style={{
+        width: "100%",
+        height: "100%",
+        objectFit: "cover"
+      }}
+    />
   )
 
   // Don't render until mounted to avoid hydration mismatch
@@ -683,6 +751,7 @@ export default function AIHelper() {
               transform: "scale(1)",
               position: "relative",
               zIndex: 10000,
+              overflow: "hidden",
             }}
             onMouseEnter={(e) => {
               ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1.2) translateY(-10px)"
@@ -759,10 +828,20 @@ export default function AIHelper() {
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
-            animation: "slideIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards",
+            animation: isClosing ? "slideOut 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards" : "slideIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards",
           }}
         >
           <style>{`
+            @keyframes slideOut {
+              from {
+                transform: translateX(0);
+                opacity: 1;
+              }
+              to {
+                transform: translateX(100%);
+                opacity: 0;
+              }
+            }
             @keyframes slideIn {
               from {
                 transform: translateX(100%);
@@ -789,78 +868,17 @@ export default function AIHelper() {
                 opacity: 0.5;
               }
             }
+            @keyframes pulse-ring {
+              0% {
+                transform: scale(1);
+                opacity: 1;
+              }
+              100% {
+                transform: scale(1.8);
+                opacity: 0;
+              }
+            }
           `}</style>
-
-          {/* Header */}
-          <div
-            style={{
-              padding: "20px 16px",
-              background: "linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%)",
-              color: "white",
-              display: "flex",
-              alignItems: "center",
-              gap: "14px",
-              borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
-              boxShadow: "0 4px 12px rgba(6, 182, 212, 0.2)",
-            }}
-          >
-            <div
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: "12px",
-                background: "rgba(255, 255, 255, 0.25)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                backdropFilter: "blur(8px)",
-                border: "1px solid rgba(255, 255, 255, 0.3)",
-              }}
-            >
-              <RobotIcon />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: "16px", letterSpacing: "-0.5px" }}>
-                {lang === "en" ? "AI Educator" : "AI শিক্ষক"}
-              </div>
-              <div style={{ fontSize: "13px", opacity: 0.9, fontWeight: 500 }}>
-                {lang === "en" ? "Always here to help" : "সর্বদা সাহায্যের জন্য প্রস্তুত"}
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                setOpen(false)
-                setSpeechToSpeechMode(false)
-                stopMic()
-              }}
-              style={{
-                background: "rgba(255, 255, 255, 0.2)",
-                border: "none",
-                color: "white",
-                width: 40,
-                height: 40,
-                borderRadius: "10px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "all 0.2s",
-                backdropFilter: "blur(4px)",
-              }}
-              onMouseEnter={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.background = "rgba(255, 255, 255, 0.3)"
-                ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1.1)"
-              }}
-              onMouseLeave={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.background = "rgba(255, 255, 255, 0.2)"
-                ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1)"
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M18 6L6 18M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
 
           {/* Controls Bar */}
           <div
@@ -872,8 +890,10 @@ export default function AIHelper() {
               alignItems: "center",
               background: "rgba(248, 250, 252, 0.5)",
               flexWrap: "wrap",
+              justifyContent: "space-between",
             }}
           >
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             <button
               onClick={() => {
                 try { localStorage.setItem("ai_helper_messages_v1", JSON.stringify(messages.slice(-200))) } catch {}
@@ -936,48 +956,35 @@ export default function AIHelper() {
             >
               {lang === "en" ? "Clear" : "সাফ করুন"}
             </button>
-            {!isMobile && (
-              <button
-                onClick={toggleSpeechToSpeech}
-                style={{
-                  padding: "8px 14px",
-                  borderRadius: "8px",
-                  border: "1.5px solid #e2e8f0",
-                  background: speechToSpeechMode ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "#ffffff",
-                  cursor: "pointer",
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  transition: "all 0.2s",
-                  color: speechToSpeechMode ? "white" : "#10b981",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                }}
-                onMouseEnter={(e) => {
-                  if (!speechToSpeechMode) {
-                    ;(e.currentTarget as HTMLButtonElement).style.background = "#f1f5f9"
-                    ;(e.currentTarget as HTMLButtonElement).style.borderColor = "#10b981"
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!speechToSpeechMode) {
-                    ;(e.currentTarget as HTMLButtonElement).style.background = "#ffffff"
-                    ;(e.currentTarget as HTMLButtonElement).style.borderColor = "#e2e8f0"
-                  }
-                }}
-              >
-                {speechToSpeechMode && (
-                  <span style={{
-                    width: "8px",
-                    height: "8px",
-                    borderRadius: "50%",
-                    background: "white",
-                    animation: "pulse 1.5s infinite"
-                  }} />
-                )}
-                {lang === "en" ? (speechToSpeechMode ? "Voice Mode ON" : "Voice Mode") : (speechToSpeechMode ? "ভয়েস মোড চালু" : "ভয়েস মোড")}
-              </button>
-            )}
+                        </div>
+            <button
+              onClick={handleClose}
+              style={{
+                background: "rgba(239, 68, 68, 0.1)",
+                border: "1px solid rgba(239, 68, 68, 0.2)",
+                color: "#ef4444",
+                width: 40,
+                height: 40,
+                borderRadius: "8px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                ;(e.currentTarget as HTMLButtonElement).style.background = "rgba(239, 68, 68, 0.2)"
+                ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1.1)"
+              }}
+              onMouseLeave={(e) => {
+                ;(e.currentTarget as HTMLButtonElement).style.background = "rgba(239, 68, 68, 0.1)"
+                ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1)"
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
           </div>
 
           {/* Messages */}
@@ -1015,15 +1022,18 @@ export default function AIHelper() {
                       justifyContent: "center",
                       flexShrink: 0,
                       marginTop: "2px",
+                      overflow: "hidden"
                     }}
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                      <rect x="4" y="6" width="16" height="12" rx="2" />
-                      <circle cx="9" cy="11" r="1.5" />
-                      <circle cx="15" cy="11" r="1.5" />
-                      <path d="M6 18v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1" />
-                      <rect x="8" y="2" width="8" height="3" rx="1" />
-                    </svg>
+                    <img 
+                      src="/ai-icon.png" 
+                      alt="AI Assistant"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover"
+                      }}
+                    />
                   </div>
                 )}
                 <div
@@ -1085,6 +1095,80 @@ export default function AIHelper() {
               boxShadow: "0 -4px 12px rgba(0, 0, 0, 0.04)",
             }}
           >
+            {/* Microphone Button */}
+            {!isMobile && (
+              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                {/* Sound Animation Circles */}
+                {speechToSpeechMode && (
+                  <div style={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    pointerEvents: "none",
+                  }}>
+                    <div style={{
+                      position: "absolute",
+                      width: `${20 + audioLevel * 0.3}px`,
+                      height: `${20 + audioLevel * 0.3}px`,
+                      borderRadius: "50%",
+                      border: "2px solid rgba(14, 165, 233, 0.3)",
+                      animation: "pulse-ring 1.5s infinite",
+                    }} />
+                    <div style={{
+                      position: "absolute",
+                      width: `${15 + audioLevel * 0.2}px`,
+                      height: `${15 + audioLevel * 0.2}px`,
+                      borderRadius: "50%",
+                      border: "2px solid rgba(14, 165, 233, 0.5)",
+                      animation: "pulse-ring 1.5s infinite 0.3s",
+                    }} />
+                  </div>
+                )}
+                
+                <button
+                  onClick={toggleSpeechToSpeech}
+                  style={{
+                    width: "44px",
+                    height: "44px",
+                    borderRadius: "50%",
+                    border: "2px solid #e2e8f0",
+                    background: speechToSpeechMode ? "linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%)" : "#ffffff",
+                    color: speechToSpeechMode ? "white" : "#64748b",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "all 0.2s",
+                    boxShadow: speechToSpeechMode ? "0 4px 12px rgba(6, 182, 212, 0.3)" : "0 1px 3px rgba(0, 0, 0, 0.1)",
+                    position: "relative",
+                    zIndex: 1,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!speechToSpeechMode) {
+                      ;(e.currentTarget as HTMLButtonElement).style.background = "#f1f5f9"
+                      ;(e.currentTarget as HTMLButtonElement).style.borderColor = "#0ea5e9"
+                      ;(e.currentTarget as HTMLButtonElement).style.color = "#0ea5e9"
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!speechToSpeechMode) {
+                      ;(e.currentTarget as HTMLButtonElement).style.background = "#ffffff"
+                      ;(e.currentTarget as HTMLButtonElement).style.borderColor = "#e2e8f0"
+                      ;(e.currentTarget as HTMLButtonElement).style.color = "#64748b"
+                    }
+                  }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" y1="19" x2="12" y2="23"/>
+                    <line x1="8" y1="23" x2="16" y2="23"/>
+                  </svg>
+                </button>
+              </div>
+            )}
+            
             <input
               ref={inputRef}
               type="text"
@@ -1186,89 +1270,13 @@ export default function AIHelper() {
               }
             }}
           />
-
-          {/* Voice Mode Indicator */}
-          {speechToSpeechMode && !isMobile && (
-            <div
-              style={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                background: "rgba(16, 185, 129, 0.95)",
-                color: "white",
-                padding: "16px 24px",
-                borderRadius: "12px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "12px",
-                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.2)",
-                pointerEvents: "none",
-                zIndex: 10001,
-              }}
-            >
-              <div style={{
-                width: "48px",
-                height: "48px",
-                borderRadius: "50%",
-                background: "rgba(255, 255, 255, 0.2)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                  <line x1="12" y1="19" x2="12" y2="23" />
-                  <line x1="8" y1="23" x2="16" y2="23" />
-                </svg>
-              </div>
-              <div style={{
-                fontSize: "16px",
-                fontWeight: 600,
-                textAlign: "center"
-              }}>
-                {lang === "en" ? "Listening..." : "শুনছি..."}
-              </div>
-              <div style={{
-                fontSize: "13px",
-                opacity: 0.9,
-                textAlign: "center"
-              }}>
-                {lang === "en" ? "Speak your question" : "আপনার প্রশ্ন বলুন"}
-              </div>
-              <div style={{
-                display: "flex",
-                gap: "4px",
-                marginTop: "4px"
-              }}>
-                {[0, 1, 2].map((i) => (
-                  <div
-                    key={i}
-                    style={{
-                      width: "6px",
-                      height: "24px",
-                      background: "white",
-                      borderRadius: "3px",
-                      animation: `pulse 1s infinite ${i * 0.2}s`,
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
       {/* Overlay */}
       {open && (
         <div
-          onClick={() => {
-            setOpen(false)
-            setSpeechToSpeechMode(false)
-            stopMic()
-          }}
+          onClick={handleClose}
           style={{
             position: "fixed",
             left: 0,
