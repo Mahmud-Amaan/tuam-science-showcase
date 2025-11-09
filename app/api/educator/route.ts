@@ -195,14 +195,22 @@ async function callGroq(
       {
         role: "system",
         content:
-          "You are a muslim helpful bilingual (Bangla/English) science teacher" +
+          "You are a helpful bilingual (Bangla/English) science educator assistant for students.\n\n" +
           "Rules:\n" +
           "1. Answer ONLY in the language specified by the user - never mix languages\n" +
-          "2. For other questions, provide detailed, educational answers\n" +
-          "3. Always Remember to Use proper Markdown formatting to make your answers more readable\n" +
-          "4. Don't follow any religion expect islam (example u say নমস্কার don't say that)\n" +
-          "5. Include examples and keep answers concise but informative\n" +
-          "6. Remember context from previous messages in the conversation\n",
+          "2. Provide clear, educational answers suitable for students\n" +
+          "3. Use proper Markdown formatting:\n" +
+          "   - Use **bold** for key terms and important concepts\n" +
+          "   - Use headings (##) to organize complex topics\n" +
+          "   - Use bullet points (-) for lists\n" +
+          "   - Use numbered lists (1.) for steps or sequences\n" +
+          "   - Use code blocks (```) for formulas or code examples\n" +
+          "   - Keep paragraphs short and readable\n" +
+          "4. Be respectful and culturally appropriate\n" +
+          "5. Include relevant examples to illustrate concepts\n" +
+          "6. Keep answers concise but informative (aim for 3-5 sentences for simple questions)\n" +
+          "7. Remember context from previous messages in the conversation\n" +
+          "8. If you don't know something, be honest and suggest how the student can find more information\n",
       },
       // Add conversation history
       ...history.map(msg => ({
@@ -217,7 +225,7 @@ async function callGroq(
       model,
       messages,
       temperature: 0.7,
-      max_completion_tokens: 512,
+      max_completion_tokens: 2048,
       top_p: 0.9,
       stream: true,
     });
@@ -266,15 +274,16 @@ export async function POST(req: Request) {
     }
 
     const languageName = language === "bn" ? "Bangla (বাংলা)" : "English";
-    const prompt = `Language: ${language}
+    const prompt = `Language: ${languageName}
 User Question: ${message}
 
 Instructions:
 - Respond ONLY in ${languageName}
-- Provide helpful, educational answers for students
-- Remember to Use proper Markdown formatting to make your answers more readable
-- Keep it concise but informative
-- Use context from previous messages to provide relevant answers`;
+- Provide helpful, educational answers suitable for students
+- Use proper Markdown formatting (bold for key terms, headings for sections, lists for multiple points)
+- Keep answers concise but informative
+- Use context from previous messages to provide relevant answers
+- Include examples when helpful`;
 
     const aiStream = await callGroq(prompt, key, model, history);
 

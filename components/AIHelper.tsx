@@ -466,12 +466,10 @@ export default function AIHelper() {
 
   const toggleSpeaker = () => {
     if (!mounted) return
-    if (lang !== "en" && !speakerEnabled) {
-      alert("Text to speech is only available for English responses.")
-      return
-    }
     if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-      alert("Speech synthesis is not supported in this browser.")
+      alert(lang === "en" 
+        ? "Speech synthesis is not supported in this browser."
+        : "এই ব্রাউজারে স্পিচ সিন্থেসিস সমর্থিত নয়।")
       return
     }
     setSpeakerEnabled((prev) => {
@@ -540,7 +538,7 @@ export default function AIHelper() {
   }
 
   const speakBotReply = (rawText: string) => {
-    if (!speakerEnabled || lang !== "en" || typeof window === "undefined") return
+    if (!speakerEnabled || typeof window === "undefined") return
     const synth = window.speechSynthesis
     if (!synth) return
 
@@ -558,27 +556,48 @@ export default function AIHelper() {
 
     synth.cancel()
     const utterance = new SpeechSynthesisUtterance(sanitized)
-    utterance.lang = "en-US"
+    
+    // Set language based on current language setting
+    utterance.lang = lang === "bn" ? "bn-BD" : "en-US"
 
     const availableVoices = voices.length ? voices : synth.getVoices()
     const lower = (name: string) => name.toLowerCase()
-    const preferredNames = [
-      "google uk english male",
-      "google us english male",
-      "google english (uk) male",
-      "google english (us) male",
-    ]
-
-    const primaryMale = availableVoices.find((voice: SpeechSynthesisVoice) => preferredNames.includes(lower(voice.name)))
-    const googleMale = availableVoices.find((voice: SpeechSynthesisVoice) => {
-      const name = lower(voice.name)
-      return voice.lang.startsWith("en") && name.includes("google") && name.includes("male")
-    })
-    const anyMale = availableVoices.find((voice: SpeechSynthesisVoice) => voice.lang.startsWith("en") && lower(voice.name).includes("male"))
-    const googleAny = availableVoices.find((voice: SpeechSynthesisVoice) => voice.lang.startsWith("en") && lower(voice.name).includes("google"))
-    const fallbackEnglish = availableVoices.find((voice: SpeechSynthesisVoice) => voice.lang.startsWith("en"))
-
-    utterance.voice = primaryMale ?? googleMale ?? anyMale ?? googleAny ?? fallbackEnglish ?? null
+    
+    if (lang === "bn") {
+      // Bangla voice selection
+      const googleBangla = availableVoices.find((voice: SpeechSynthesisVoice) => 
+        voice.lang.startsWith("bn") && lower(voice.name).includes("google")
+      )
+      const anyBangla = availableVoices.find((voice: SpeechSynthesisVoice) => 
+        voice.lang.startsWith("bn")
+      )
+      utterance.voice = googleBangla ?? anyBangla ?? null
+    } else {
+      // English voice selection
+      const preferredNames = [
+        "google uk english male",
+        "google us english male",
+        "google english (uk) male",
+        "google english (us) male",
+      ]
+      const primaryMale = availableVoices.find((voice: SpeechSynthesisVoice) => 
+        preferredNames.includes(lower(voice.name))
+      )
+      const googleMale = availableVoices.find((voice: SpeechSynthesisVoice) => {
+        const name = lower(voice.name)
+        return voice.lang.startsWith("en") && name.includes("google") && name.includes("male")
+      })
+      const anyMale = availableVoices.find((voice: SpeechSynthesisVoice) => 
+        voice.lang.startsWith("en") && lower(voice.name).includes("male")
+      )
+      const googleAny = availableVoices.find((voice: SpeechSynthesisVoice) => 
+        voice.lang.startsWith("en") && lower(voice.name).includes("google")
+      )
+      const fallbackEnglish = availableVoices.find((voice: SpeechSynthesisVoice) => 
+        voice.lang.startsWith("en")
+      )
+      utterance.voice = primaryMale ?? googleMale ?? anyMale ?? googleAny ?? fallbackEnglish ?? null
+    }
 
     utteranceRef.current = utterance
     lastSpokenRef.current = rawText
@@ -957,8 +976,14 @@ export default function AIHelper() {
             </button>
             <button
               onClick={toggleSpeaker}
-              aria-label={speakerEnabled ? "Disable speaker" : "Enable speaker"}
-              title={speakerEnabled ? "Disable AI voice" : "Enable AI voice (English only)"}
+              aria-label={speakerEnabled 
+                ? (lang === "en" ? "Disable speaker" : "স্পিকার বন্ধ করুন")
+                : (lang === "en" ? "Enable speaker" : "স্পিকার চালু করুন")
+              }
+              title={speakerEnabled 
+                ? (lang === "en" ? "Disable AI voice" : "AI ভয়েস বন্ধ করুন")
+                : (lang === "en" ? "Enable AI voice" : "AI ভয়েস চালু করুন")
+              }
               style={{
                 width: 40,
                 height: 40,
@@ -1112,28 +1137,110 @@ export default function AIHelper() {
                   }}
                 >
                   {m.role === "bot" ? (
-                    <ReactMarkdown
-                      components={{
-                        code({ node, inline, className, children, ...props }: any) {
-                          const match = /language-(\w+)/.exec(className || '');
-                          const { style: _markdownCodeStyle, ...restProps } = props as Record<string, any>;
-                          return !inline && match ? (
-                            <SyntaxHighlighter
-                              style={oneDark}
-                              language={match[1]}
-                              PreTag="div"
-                              {...restProps}
-                            >
-                              {String(children).replace(/\n$/, '')}
-                            </SyntaxHighlighter>
-                          ) : (
-                            <code className={className} {...props}>{children}</code>
-                          );
-                        }
-                      }}
-                    >
-                      {m.text}
-                    </ReactMarkdown>
+                    <div className="markdown-content">
+                      <ReactMarkdown
+                        components={{
+                          code({ node, inline, className, children, ...props }: any) {
+                            const match = /language-(\w+)/.exec(className || '');
+                            const { style: _markdownCodeStyle, ...restProps } = props as Record<string, any>;
+                            return !inline && match ? (
+                              <SyntaxHighlighter
+                                style={oneDark}
+                                language={match[1]}
+                                PreTag="div"
+                                {...restProps}
+                              >
+                                {String(children).replace(/\n$/, '')}
+                              </SyntaxHighlighter>
+                            ) : (
+                              <code 
+                                style={{
+                                  background: isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.08)",
+                                  padding: "2px 6px",
+                                  borderRadius: "4px",
+                                  fontSize: "0.9em",
+                                  fontFamily: "monospace"
+                                }}
+                                {...props}
+                              >
+                                {children}
+                              </code>
+                            );
+                          },
+                          h1: ({children}) => (
+                            <h1 style={{
+                              fontSize: "1.5em",
+                              fontWeight: "bold",
+                              marginTop: "0.5em",
+                              marginBottom: "0.5em",
+                              color: isDark ? "#34c759" : "#2ecc71"
+                            }}>{children}</h1>
+                          ),
+                          h2: ({children}) => (
+                            <h2 style={{
+                              fontSize: "1.3em",
+                              fontWeight: "bold",
+                              marginTop: "0.5em",
+                              marginBottom: "0.4em",
+                              color: isDark ? "#34c759" : "#2ecc71"
+                            }}>{children}</h2>
+                          ),
+                          h3: ({children}) => (
+                            <h3 style={{
+                              fontSize: "1.15em",
+                              fontWeight: "600",
+                              marginTop: "0.4em",
+                              marginBottom: "0.3em"
+                            }}>{children}</h3>
+                          ),
+                          p: ({children}) => (
+                            <p style={{
+                              marginTop: "0.5em",
+                              marginBottom: "0.5em"
+                            }}>{children}</p>
+                          ),
+                          ul: ({children}) => (
+                            <ul style={{
+                              marginTop: "0.5em",
+                              marginBottom: "0.5em",
+                              paddingLeft: "1.5em"
+                            }}>{children}</ul>
+                          ),
+                          ol: ({children}) => (
+                            <ol style={{
+                              marginTop: "0.5em",
+                              marginBottom: "0.5em",
+                              paddingLeft: "1.5em"
+                            }}>{children}</ol>
+                          ),
+                          li: ({children}) => (
+                            <li style={{
+                              marginTop: "0.25em",
+                              marginBottom: "0.25em"
+                            }}>{children}</li>
+                          ),
+                          strong: ({children}) => (
+                            <strong style={{
+                              fontWeight: "700",
+                              color: "#0f5132"
+                            }}>{children}</strong>
+                          ),
+                          blockquote: ({children}) => (
+                            <blockquote style={{
+                              borderLeft: `3px solid #0f5132`,
+                              paddingLeft: "1em",
+                              marginLeft: "0",
+                              marginTop: "0.5em",
+                              marginBottom: "0.5em",
+                              fontStyle: "italic",
+                              opacity: 0.9
+                            }}>{children}</blockquote>
+                          )
+                        }}
+                      >
+                        {m.text}
+                      </ReactMarkdown>
+                    </div>
                   ) : m.text}
                 </div>
               </div>
