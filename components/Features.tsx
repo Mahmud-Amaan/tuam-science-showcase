@@ -15,7 +15,6 @@ const Features = ({ language }: FeaturesProps) => {
       descEn: "See complex concepts come alive through real-time 3D models with full rotation and zoom",
       descBn: "রিয়েল-টাইম 3D মডেলের মাধ্যমে জটিল ধারণা জীবন্ত হয়ে উঠুক",
       color: "from-blue-500 to-cyan-500",
-      stat: "500+",
     },
     {
       icon: Zap,
@@ -24,7 +23,6 @@ const Features = ({ language }: FeaturesProps) => {
       descEn: "Experiment safely with variables and see instant results - risk-free science learning",
       descBn: "নিরাপদে ভেরিয়েবল নিয়ে পরীক্ষা করুন এবং তাৎক্ষণিক ফলাফল দেখুন",
       color: "from-yellow-500 to-amber-500",
-      stat: "1000+",
     },
     {
       icon: Lightbulb,
@@ -33,7 +31,6 @@ const Features = ({ language }: FeaturesProps) => {
       descEn: "Build deep conceptual knowledge with guided simulations and step-by-step explanations",
       descBn: "গাইডেড সিমুলেশন দিয়ে গভীর ধারণা তৈরি করুন",
       color: "from-green-500 to-emerald-500",
-      stat: "95%",
     },
     {
       icon: Users,
@@ -42,7 +39,6 @@ const Features = ({ language }: FeaturesProps) => {
       descEn: "Easy-to-use tools designed specifically for educators to enhance classroom engagement",
       descBn: "শিক্ষকদের জন্য ডিজাইন করা সহজ সরঞ্জাম",
       color: "from-purple-500 to-pink-500",
-      stat: "50K+",
     },
   ]
 
@@ -60,7 +56,7 @@ const Features = ({ language }: FeaturesProps) => {
                 style={{ animation: `slide-up 0.6s ease-out ${idx * 0.1}s backwards` }}
                 role="listitem"
                 aria-labelledby={`feature-title-${idx}`}
-                aria-describedby={`feature-desc-${idx} feature-stat-${idx}`}
+                aria-describedby={`feature-desc-${idx}`}
               >
                 <div
                   className={`absolute -top-8 -right-8 w-32 h-32 bg-gradient-to-bl ${feature.color} rounded-full opacity-0 group-hover:opacity-25 transition-opacity duration-300 blur-lg`}
@@ -73,12 +69,6 @@ const Features = ({ language }: FeaturesProps) => {
                   aria-label={`${language === "en" ? feature.titleEn : feature.titleBn} icon`}
                 >
                   <Icon className="text-white w-7 h-7" aria-hidden="true" />
-                </div>
-
-                <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-300/30" aria-label={`${feature.stat} ${language === "en" ? "statistic" : "পরিসংখ্যান"}`}>
-                  <span id={`feature-stat-${idx}`} className="text-xs font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-                    {feature.stat}
-                  </span>
                 </div>
 
                 <h3 id={`feature-title-${idx}`} className="text-lg font-semibold text-slate-900 mb-2">

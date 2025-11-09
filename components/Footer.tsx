@@ -66,8 +66,8 @@ const Footer = ({ language }: FooterProps) => {
           <p>
             © {currentYear}{" "}
             {language === "en"
-              ? "Virtual Lab. All rights reserved. Built with inspiration from various open-source educational tools and science laboratories worldwide."
-              : "ভার্চুয়াল ল্যাব। সর্বাধিকার সংরক্ষিত। বিশ্বের বিভিন্ন ওপেন-সোর্স শিক্ষামূলক টুল এবং বিজ্ঞান ল্যাবরেটরি থেকে অনুপ্রেরণা নিয়ে তৈরি।"}
+              ? "Virtual Lab. Note: Credits to the referenced sources, tools, and partner laboratories featured throughout this experience."
+              : "ভার্চুয়াল ল্যাব। সর্বাধিকার সংরক্ষিত। নোট: এই অভিজ্ঞতায় ব্যবহৃত উৎস, সরঞ্জাম এবং অংশীদার ল্যাবগুলোর প্রতি কৃতজ্ঞতা।"}
           </p>
           <div className="flex gap-6">
             <button 
