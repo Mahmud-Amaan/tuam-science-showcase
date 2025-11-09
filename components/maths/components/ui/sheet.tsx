@@ -5,7 +5,6 @@ import * as SheetPrimitive from "@radix-ui/react-dialog"
 import { XIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { useAccessibility } from "@/hooks/useAccessibility"
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />
@@ -44,18 +43,10 @@ function SheetContent({
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
 }) {
-  const { containerRef } = useAccessibility({
-    trapFocus: true,
-    restoreFocus: true,
-    announceOnOpen: 'Sheet opened',
-    announceOnClose: 'Sheet closed',
-  })
-
   return (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
-        ref={containerRef}
         data-slot="sheet-content"
         role="dialog"
         aria-modal="true"

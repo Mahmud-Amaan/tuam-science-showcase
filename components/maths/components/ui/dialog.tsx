@@ -5,7 +5,6 @@ import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { XIcon } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
-import { useAccessibility } from '@/hooks/useAccessibility'
 
 function Dialog({
   ...props
@@ -55,18 +54,10 @@ function DialogContent({
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
 }) {
-  const { containerRef } = useAccessibility({
-    trapFocus: true,
-    restoreFocus: true,
-    announceOnOpen: 'Dialog opened',
-    announceOnClose: 'Dialog closed',
-  })
-
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
       <DialogPrimitive.Content
-        ref={containerRef}
         data-slot="dialog-content"
         role="dialog"
         aria-modal="true"

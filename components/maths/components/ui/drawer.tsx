@@ -4,7 +4,6 @@ import * as React from 'react'
 import { Drawer as DrawerPrimitive } from 'vaul'
 
 import { cn } from '@/lib/utils'
-import { useAccessibility } from '@/hooks/useAccessibility'
 
 function Drawer({
   ...props
@@ -51,18 +50,10 @@ function DrawerContent({
   children,
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Content>) {
-  const { containerRef } = useAccessibility({
-    trapFocus: true,
-    restoreFocus: true,
-    announceOnOpen: 'Drawer opened',
-    announceOnClose: 'Drawer closed',
-  })
-
   return (
     <DrawerPortal data-slot="drawer-portal">
       <DrawerOverlay />
       <DrawerPrimitive.Content
-        ref={containerRef}
         data-slot="drawer-content"
         role="dialog"
         aria-modal="true"

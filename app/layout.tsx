@@ -4,7 +4,6 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import AIHelperPortal from "@/components/AIHelperPortal"
-import ServiceWorker from "@/components/ServiceWorker"
 
 const geist = Geist({
   subsets: ["latin"],
@@ -85,7 +84,6 @@ export default function RootLayout({
         </a>
         {children}
         <AIHelperPortal />
-        <ServiceWorker />
         <Analytics />
       </body>
     </html>

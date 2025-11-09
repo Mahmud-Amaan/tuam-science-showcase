@@ -5,7 +5,6 @@ import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog'
 
 import { cn } from '@/lib/utils'
 import { buttonVariants } from './button'
-import { useAccessibility } from '@/hooks/useAccessibility'
 
 function AlertDialog({
   ...props
@@ -49,18 +48,10 @@ function AlertDialogContent({
   className,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content>) {
-  const { containerRef } = useAccessibility({
-    trapFocus: true,
-    restoreFocus: true,
-    announceOnOpen: 'Alert dialog opened',
-    announceOnClose: 'Alert dialog closed',
-  })
-
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
       <AlertDialogPrimitive.Content
-        ref={containerRef}
         data-slot="alert-dialog-content"
         role="alertdialog"
         aria-modal="true"
