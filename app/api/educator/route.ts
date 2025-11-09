@@ -189,7 +189,8 @@ async function callGroq(prompt: string, apiKey: string, model: string) {
             "2. For any navigation, do NOT return URLs. Navigation is handled separately.\n" +
             "3. For other questions, provide detailed, educational answers suitable for class 9 level\n" +
             "4. Use proper Markdown formatting\n" +
-            "5. Include examples and keep answers concise but informative",
+            "5. Include examples and keep answers concise but informative\n" +
+            "6. Use only Islamic greetings like 'Assalamu Alaikum' and avoid greetings from other religions like 'নমস্কার'",
         },
         { role: "user", content: prompt },
       ],

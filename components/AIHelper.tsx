@@ -26,11 +26,28 @@ export default function AIHelper() {
   const [sidebarWidth, setSidebarWidth] = useState(420)
   const [isResizing, setIsResizing] = useState(false)
   const [listening, setListening] = useState(false);
+  const [currentBubbleTextIndex, setCurrentBubbleTextIndex] = useState(0);
 
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const resizeStartX = useRef(0)
   const resizeStartWidth = useRef(0)
   const didLoadFromStorage = useRef(false)
+
+  const bubbleTexts = lang === "en" 
+    ? [
+        "Need help? Ask me!",
+        "Stuck on a problem?",
+        "Let me assist you!",
+        "Questions? I'm here!",
+        "Ready to learn?"
+      ]
+    : [
+        "সাহায্য প্রয়োজন? জিজ্ঞাসা করুন!",
+        "সমস্যায় আটকে গেছেন?",
+        "আমি আপনাকে সাহায্য করতে পারি!",
+        "প্রশ্ন আছে? আমি এখানে!",
+        "শিখতে প্রস্তুত?"
+      ];
 
   const recogRef = useRef<any>(null)
   const currentTranscriptRef = useRef<string>("")
@@ -44,6 +61,15 @@ export default function AIHelper() {
 
   // Initialize component on client-side only
   useEffect(() => { setMounted(true) }, [])
+
+  // Cycle through bubble texts
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentBubbleTextIndex((prevIndex) => (prevIndex + 1) % bubbleTexts.length);
+    }, 3000); // Change text every 3 seconds
+
+    return () => clearInterval(interval);
+  }, [bubbleTexts.length]);
 
   // Load messages from localStorage on first mount; if none, seed with greeting
   useEffect(() => {
@@ -598,6 +624,39 @@ export default function AIHelper() {
             zIndex: 9999,
           }}
         >
+          {/* Animated Chat Bubble */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: 75,
+              right: 10,
+              background: "linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%)",
+              color: "white",
+              padding: "8px 12px",
+              borderRadius: "16px",
+              fontSize: "12px",
+              fontWeight: 600,
+              whiteSpace: "nowrap",
+              boxShadow: "0 4px 12px rgba(6, 182, 212, 0.3)",
+              animation: "bounce 2s infinite, fadeInOut 3s infinite",
+              pointerEvents: "none",
+            }}
+          >
+            {bubbleTexts[currentBubbleTextIndex]}
+            <div
+              style={{
+                position: "absolute",
+                bottom: -6,
+                right: 20,
+                width: 12,
+                height: 12,
+                background: "linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%)",
+                transform: "rotate(45deg)",
+                boxShadow: "2px 2px 4px rgba(6, 182, 212, 0.2)",
+              }}
+            />
+          </div>
+          
           <button
             onClick={(e) => {
               console.log("[v0] Button clicked, open state:", open)
@@ -608,13 +667,13 @@ export default function AIHelper() {
             aria-label="Open AI helper"
             title="Open AI Educator"
             style={{
-              width: 64,
-              height: 64,
+              width: 72,
+              height: 72,
               borderRadius: "50%",
               background: "linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%)",
-              border: "none",
+              border: "3px solid rgba(255, 255, 255, 0.9)",
               boxShadow:
-                "0 12px 32px rgba(6, 182, 212, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 4px 8px rgba(0, 0, 0, 0.1)",
+                "0 16px 40px rgba(6, 182, 212, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 12px rgba(0, 0, 0, 0.15)",
               color: "white",
               display: "flex",
               alignItems: "center",
@@ -626,14 +685,14 @@ export default function AIHelper() {
               zIndex: 10000,
             }}
             onMouseEnter={(e) => {
-              ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1.15) translateY(-8px)"
+              ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1.2) translateY(-10px)"
               ;(e.currentTarget as HTMLButtonElement).style.boxShadow =
-                "0 20px 40px rgba(6, 182, 212, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 8px 16px rgba(0, 0, 0, 0.15)"
+                "0 24px 48px rgba(6, 182, 212, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 10px 20px rgba(0, 0, 0, 0.2)"
             }}
             onMouseLeave={(e) => {
               ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1) translateY(0)"
               ;(e.currentTarget as HTMLButtonElement).style.boxShadow =
-                "0 12px 32px rgba(6, 182, 212, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 4px 8px rgba(0, 0, 0, 0.1)"
+                "0 16px 40px rgba(6, 182, 212, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 12px rgba(0, 0, 0, 0.15)"
             }}
           >
             <RobotIcon />
@@ -646,7 +705,7 @@ export default function AIHelper() {
               right: 0,
               bottom: 0,
               borderRadius: "50%",
-              border: "2px solid #06b6d4",
+              border: "3px solid #06b6d4",
               animation: "pulse-ring 2s infinite",
               pointerEvents: "none",
             }}
@@ -658,8 +717,27 @@ export default function AIHelper() {
                   opacity: 1;
                 }
                 100% {
-                  transform: scale(1.4);
+                  transform: scale(1.5);
                   opacity: 0;
+                }
+              }
+              @keyframes bounce {
+                0%, 20%, 50%, 80%, 100% {
+                  transform: translateY(0);
+                }
+                40% {
+                  transform: translateY(-8px);
+                }
+                60% {
+                  transform: translateY(-4px);
+                }
+              }
+              @keyframes fadeInOut {
+                0%, 100% {
+                  opacity: 0.9;
+                }
+                50% {
+                  opacity: 0.6;
                 }
               }
             `}</style>
@@ -921,12 +999,36 @@ export default function AIHelper() {
                 style={{
                   display: "flex",
                   justifyContent: m.role === "user" ? "flex-end" : "flex-start",
+                  gap: "8px",
                   animation: "fadeIn 0.3s ease-in forwards",
                 }}
               >
+                {m.role === "bot" && (
+                  <div
+                    style={{
+                      width: "32px",
+                      height: "32px",
+                      borderRadius: "50%",
+                      background: "linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      marginTop: "2px",
+                    }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                      <rect x="4" y="6" width="16" height="12" rx="2" />
+                      <circle cx="9" cy="11" r="1.5" />
+                      <circle cx="15" cy="11" r="1.5" />
+                      <path d="M6 18v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1" />
+                      <rect x="8" y="2" width="8" height="3" rx="1" />
+                    </svg>
+                  </div>
+                )}
                 <div
                   style={{
-                    maxWidth: "85%",
+                    maxWidth: m.role === "user" ? "85%" : "calc(100% - 40px)",
                     padding: "12px 16px",
                     borderRadius: m.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
                     background: m.role === "user" ? "linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%)" : "white",
