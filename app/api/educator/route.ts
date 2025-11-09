@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import Fuse from "fuse.js";
 
+// Configure runtime (Node.js needed for streaming and Groq SDK)
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic' // Always fresh for AI responses
+export const maxDuration = 30 // Max 30 seconds for streaming
+
 // --- Step 1: Navigation Map ---
 const navigationData = [
   // Main subjects

@@ -2,10 +2,18 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
+import dynamic from "next/dynamic"
 import "./globals.css"
-import AIHelperPortal from "@/components/AIHelperPortal"
 import { CacheReset } from "@/components/CacheReset"
 import { ThemeProvider } from "@/components/theme-provider"
+import { WebVitals } from "./web-vitals"
+import RoutePrefetcher from "@/components/RoutePrefetcher"
+
+// Dynamically import AIHelperPortal to reduce initial bundle size
+// Client component will be lazy loaded - no SSR needed since it's client-only
+const AIHelperPortal = dynamic(() => import("@/components/AIHelperPortal"), {
+  loading: () => null,
+})
 
 const geist = Geist({
   subsets: ["latin"],
@@ -59,10 +67,54 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/* PWA Manifest */}
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#3b82f6" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Virtual Lab" />
+        
+        {/* Preconnect to external domains for faster loading */}
+        <link rel="preconnect" href="https://api.groq.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="//api.groq.com" />
+        <link rel="dns-prefetch" href="//vercel-insights.com" />
+        
         {/* Preload critical resources */}
-        <link rel="preload" href="/banner.jpg" as="image" type="image/jpeg" />
-        <link rel="dns-prefetch" href="//fonts.googleapis.com" />
-        <link rel="dns-prefetch" href="//fonts.gstatic.com" />
+        <link rel="preload" href="/banner.jpg" as="image" type="image/jpeg" fetchPriority="high" />
+        <link rel="preload" href="/background.mp4" as="video" type="video/mp4" />
+        
+        {/* Structured Data (JSON-LD) for SEO */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "EducationalOrganization",
+              "name": "Virtual Lab",
+              "description": "Interactive 3D science simulations aligned with the National curriculum for physics, chemistry, biology, math, and ICT",
+              "url": "https://tuam-science.vercel.app",
+              "logo": "https://tuam-science.vercel.app/banner.jpg",
+              "sameAs": [],
+              "educationalLevel": "Secondary Education",
+              "audience": {
+                "@type": "EducationalAudience",
+                "educationalRole": "student"
+              },
+              "provider": {
+                "@type": "Organization",
+                "name": "Virtual Lab"
+              },
+              "potentialAction": {
+                "@type": "SearchAction",
+                "target": "https://tuam-science.vercel.app/?q={search_term_string}",
+                "query-input": "required name=search_term_string"
+              }
+            })
+          }}
+        />
       </head>
       <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased`}>
         <ThemeProvider>
@@ -88,7 +140,9 @@ export default function RootLayout({
           </a>
           {children}
           <AIHelperPortal />
+          <RoutePrefetcher />
           <Analytics />
+          <WebVitals />
         </ThemeProvider>
       </body>
     </html>

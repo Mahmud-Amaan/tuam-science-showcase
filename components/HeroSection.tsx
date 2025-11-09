@@ -1,9 +1,18 @@
 "use client"
 
-import { EncryptedText } from "@/components/ui/encrypted-text";
 import { useRouter } from "next/navigation"
 import { useRef, useState, useEffect } from "react"
-import { Zap, Calculator, Atom, FlaskConical, Leaf, Laptop } from "lucide-react"
+import { Calculator, Atom, FlaskConical, Leaf, Laptop } from "lucide-react"
+import dynamic from "next/dynamic"
+import Link from "next/link"
+
+// Dynamically import EncryptedText animation - not critical for initial load
+const EncryptedText = dynamic(
+  () => import("@/components/ui/encrypted-text").then(mod => ({ default: mod.EncryptedText })),
+  { 
+    loading: () => <span className="opacity-80">experience.</span>,
+  }
+)
 
 interface HeroProps {
   language: "en" | "bn"
@@ -57,7 +66,7 @@ const HeroSection = ({ language }: HeroProps) => {
         muted
         loop
         playsInline
-        preload="auto"
+        preload="none"
         poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1920 1080'%3E%3Crect fill='%23000000' width='1920' height='1080'/%3E%3C/svg%3E"
         className="absolute inset-0 w-full h-full object-cover"
         style={{ 
@@ -66,7 +75,8 @@ const HeroSection = ({ language }: HeroProps) => {
           left: '0',
           width: '100%',
           height: '100%',
-          objectFit: 'cover'
+          objectFit: 'cover',
+          willChange: 'transform',
         }}
         title="Background video"
       />
@@ -156,21 +166,15 @@ const HeroSection = ({ language }: HeroProps) => {
           ].map((subject, idx) => {
             const IconComponent = subject.icon
             return (
-              <button
+              <Link
                 key={idx}
-                onClick={() => {
-                  router.push(subject.route)
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault()
-                    router.push(subject.route)
-                  }
-                }}
-                className={`group relative p-10 md:p-12 rounded-2xl bg-gradient-to-br ${subject.gradient} border-2 ${subject.borderGlow} cursor-pointer transform transition-all duration-500 hover:scale-110 hover:-translate-y-2 ${subject.glow} ${subject.hoverGlow} shadow-2xl overflow-hidden focus:outline-none focus:ring-4 focus:ring-white/50 focus:scale-110 focus:-translate-y-2`}
+                href={subject.route}
+                prefetch={true}
+                onMouseEnter={() => router.prefetch(subject.route)}
+                onTouchStart={() => router.prefetch(subject.route)}
+                className={`group relative p-10 md:p-12 rounded-2xl bg-gradient-to-br ${subject.gradient} border-2 ${subject.borderGlow} cursor-pointer transform transition-all duration-500 hover:scale-110 hover:-translate-y-2 ${subject.glow} ${subject.hoverGlow} shadow-2xl overflow-hidden focus:outline-none focus:ring-4 focus:ring-white/50 focus:scale-110 focus:-translate-y-2 block`}
                 style={{ animation: `bounce-in 0.6s ease-out ${idx * 0.1}s backwards` }}
                 aria-label={`${language === "en" ? "Navigate to" : "যান"} ${subject.label} ${language === "en" ? "page" : "পৃষ্ঠা"} - ${subject.desc}`}
-                tabIndex={0}
               >
                 {/* Animated border glow */}
                 <div
@@ -219,7 +223,7 @@ const HeroSection = ({ language }: HeroProps) => {
                   className="absolute bottom-0 left-0 right-0 h-1/3 rounded-b-2xl bg-linear-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"
                   aria-hidden="true"
                 />
-              </button>
+              </Link>
             )
           })}
         </div>

@@ -1,0 +1,54 @@
+{
+  "name": "Virtual Lab - Interactive Science Learning",
+  "short_name": "Virtual Lab",
+  "description": "Explore science through interactive 3D simulations aligned with the National curriculum",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/ai-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/ai-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "science", "learning"],
+  "screenshots": [
+    {
+      "src": "/banner.jpg",
+      "sizes": "1200x630",
+      "type": "image/jpeg"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Physics",
+      "url": "/physics",
+      "description": "Explore physics simulations"
+    },
+    {
+      "name": "Chemistry",
+      "url": "/chemistry",
+      "description": "Explore chemistry simulations"
+    },
+    {
+      "name": "Biology",
+      "url": "/biology",
+      "description": "Explore biology simulations"
+    },
+    {
+      "name": "Math",
+      "url": "/math",
+      "description": "Explore math visualizations"
+    }
+  ]
+}
