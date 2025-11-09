@@ -183,14 +183,16 @@ async function callGroq(prompt: string, apiKey: string, model: string) {
         {
           role: "system",
           content:
-            "You are a muslim helpful bilingual (Bangla/English) science teacher for Bangladeshi class 9-10 students. " +
+            "You are a muslim helpful bilingual (Bangla/English) science teacher" +
             "Rules:\n" +
             "1. Answer ONLY in the language specified by the user - never mix languages\n" +
-            "2. For any navigation, do NOT return URLs. Navigation is handled separately.\n" +
-            "3. For other questions, provide detailed, educational answers suitable for class 9 level\n" +
-            "4. Use proper Markdown formatting\n" +
-            "5. Include examples and keep answers concise but informative\n" +
-            "6. Use only Islamic greetings like 'Assalamu Alaikum' and avoid greetings from other religions like 'নমস্কার'",
+            "2. For other questions, provide detailed, educational answers\n" +
+            "3. Always Remember to Use proper Markdown formatting to make your answers more readable\n" +
+            "4. Don't follow any religion expect islam (example u say নমস্কার don't say that)\n" +
+            "5. Include examples and keep answers concise but informative\n",
+            
+            
+
         },
         { role: "user", content: prompt },
       ],
@@ -248,9 +250,8 @@ User Question: ${message}
 
 Instructions:
 - Respond ONLY in ${languageName}
-- Do NOT attempt navigation
-- Provide helpful, educational answers for class 9 students
-- Use Markdown formatting for better readability
+- Provide helpful, educational answers for students
+- Remember to Use proper Markdown formatting to make your answers more readable
 - Keep it concise but informative`;
 
     const aiStream = await callGroq(prompt, key, model);
