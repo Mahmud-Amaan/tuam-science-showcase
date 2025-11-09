@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import AIHelperPortal from "@/components/AIHelperPortal"
+import { ServiceWorkerCleanup } from "@/components/ServiceWorkerCleanup"
 
 const geist = Geist({
   subsets: ["latin"],
@@ -63,6 +64,7 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="//fonts.gstatic.com" />
       </head>
       <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased`}>
+        <ServiceWorkerCleanup />
         {/* Skip Links for Accessibility */}
         <a
           href="#main-content"
