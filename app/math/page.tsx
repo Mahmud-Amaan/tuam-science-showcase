@@ -29,6 +29,14 @@ export default function MathPage() {
       icon: "🧭",
       route: "/math/vector",
     },
+    {
+      titleEn: "Trigonometry Tour",
+      titleBn: "ত্রিকোণমিতি সফর",
+      descEn: "Visualize sine, cosine, and tangent with interactive demos",
+      descBn: "ইন্টারঅ্যাক্টিভ ডেমোর মাধ্যমে সাইন, কোসাইন এবং ট্যানজেন্ট কল্পনা করুন",
+      icon: "🔺",
+      route: "/math/trigonometry",
+    },
   ]
 
   return (

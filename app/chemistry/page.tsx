@@ -45,6 +45,14 @@ export default function ChemistryPage() {
       icon: "🧪",
       href: "/chemistry/ph-scale",
     },
+    {
+      titleEn: "Periodic Table",
+      titleBn: "পর্যায় সারণি",
+      descEn: "Discover elements with Google Arts & Culture's interactive periodic table",
+      descBn: "গুগল আর্টস অ্যান্ড কালচারের ইন্টারঅ্যাক্টিভ পর্যায় সারণির মাধ্যমে মৌল আবিষ্কার করুন",
+      icon: "🧭",
+      href: "/chemistry/periodic-table",
+    },
   ]
 
   return (
