@@ -16,6 +16,25 @@ declare global {
 type ChatMsg = { role: "user" | "bot"; text: string; time?: number }
 type Intent = { type: "navigate" | "answer"; target?: string }
 
+function markdownToSpeech(text: string) {
+  return text
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/__(.*?)__/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/_(.*?)_/g, "$1")
+    .replace(/!\[(.*?)\]\((.*?)\)/g, "$1")
+    .replace(/\[(.*?)\]\((.*?)\)/g, "$1")
+    .replace(/^\s*#+\s+/gm, "")
+    .replace(/^\s*[\d]+\.\s+/gm, "")
+    .replace(/^[>*+-]\s+/gm, "")
+    .replace(/\n{2,}/g, ". ")
+    .replace(/\n/g, ", ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 export default function AIHelper() {
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
@@ -27,6 +46,8 @@ export default function AIHelper() {
   const [sidebarWidth, setSidebarWidth] = useState(420)
   const [isResizing, setIsResizing] = useState(false)
   const [listening, setListening] = useState(false);
+  const [speakerEnabled, setSpeakerEnabled] = useState(false)
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
 
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const resizeStartX = useRef(0)
@@ -54,7 +75,10 @@ export default function AIHelper() {
   const isRestartingRef = useRef(false)
   const speechModeRef = useRef(false)
   const recognitionStartedRef = useRef(false)
-  
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
+  const lastSpokenRef = useRef<string | null>(null)
+  const shouldResumeMicRef = useRef(false)
+
   // Detect mobile device and iOS specifically
   const isMobile = typeof window !== "undefined" && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
   const isIOS = typeof window !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent)
@@ -142,6 +166,9 @@ export default function AIHelper() {
     setIsClosing(true)
     setSpeechToSpeechMode(false)
     stopMic()
+    if (typeof window !== "undefined") {
+      window.speechSynthesis?.cancel()
+    }
     setTimeout(() => {
       setOpen(false)
       setIsClosing(false)
@@ -435,38 +462,26 @@ export default function AIHelper() {
     }
   };
 
-  // Cleanup on unmount or when language changes
-  useEffect(() => {
-    return () => {
-      if (recogRef.current) {
-        try {
-          recogRef.current.stop();
-          recogRef.current.abort();
-        } catch {}
-        recogRef.current = null;
-      }
-    };
-  }, []);
-
-  // Restart recognition when language changes if it's active
-  useEffect(() => {
-    if (speechModeRef.current && recogRef.current) {
-      const wasListening = listening;
-      stopMic();
-      if (wasListening) {
-        setTimeout(() => startMic(), 300);
-      }
+  const toggleSpeaker = () => {
+    if (!mounted) return
+    if (lang !== "en" && !speakerEnabled) {
+      alert("Text to speech is only available for English responses.")
+      return
     }
-  }, [lang])
-
-  // Stop microphone on mobile devices
-  useEffect(() => {
-    if (isMobile && speechModeRef.current) {
-      stopMic();
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      alert("Speech synthesis is not supported in this browser.")
+      return
     }
-  }, [isMobile])
+    setSpeakerEnabled((prev) => {
+      const next = !prev
+      if (!next) {
+        window.speechSynthesis.cancel()
+        lastSpokenRef.current = null
+      }
+      return next
+    })
+  }
 
-  // ---- MESSAGE HANDLING ----
   function fetchReply(text: string, onChunk?: (chunk: string) => void) {
     return new Promise<{ reply: string; intent?: Intent }>(async (resolve) => {
       try {
@@ -475,16 +490,16 @@ export default function AIHelper() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message: text, language: lang }),
         });
-        
+
         if (!res.ok) throw new Error("API error");
-        
+
         const contentType = res.headers.get("content-type");
-        
+
         if (contentType?.includes("text/plain")) {
           const reader = res.body?.getReader();
           const decoder = new TextDecoder();
           let fullText = "";
-          
+
           if (reader) {
             while (true) {
               const { done, value } = await reader.read();
@@ -496,7 +511,7 @@ export default function AIHelper() {
               }
             }
           }
-          
+
           resolve({ reply: fullText });
         } else {
           const data = await res.json();
@@ -512,10 +527,69 @@ export default function AIHelper() {
     });
   }
 
+  const speakBotReply = (rawText: string) => {
+    if (!speakerEnabled || lang !== "en" || typeof window === "undefined") return
+    const synth = window.speechSynthesis
+    if (!synth) return
+
+    if (lastSpokenRef.current === rawText) return
+
+    const sanitized = markdownToSpeech(rawText)
+    if (!sanitized) return
+
+    if (speechModeRef.current) {
+      shouldResumeMicRef.current = true
+      stopMic()
+    } else {
+      shouldResumeMicRef.current = false
+    }
+
+    synth.cancel()
+    const utterance = new SpeechSynthesisUtterance(sanitized)
+    utterance.lang = "en-US"
+
+    const availableVoices = voices.length ? voices : synth.getVoices()
+    const lower = (name: string) => name.toLowerCase()
+    const preferredNames = [
+      "google uk english male",
+      "google us english male",
+      "google english (uk) male",
+      "google english (us) male",
+    ]
+
+    const primaryMale = availableVoices.find((voice: SpeechSynthesisVoice) => preferredNames.includes(lower(voice.name)))
+    const googleMale = availableVoices.find((voice: SpeechSynthesisVoice) => {
+      const name = lower(voice.name)
+      return voice.lang.startsWith("en") && name.includes("google") && name.includes("male")
+    })
+    const anyMale = availableVoices.find((voice: SpeechSynthesisVoice) => voice.lang.startsWith("en") && lower(voice.name).includes("male"))
+    const googleAny = availableVoices.find((voice: SpeechSynthesisVoice) => voice.lang.startsWith("en") && lower(voice.name).includes("google"))
+    const fallbackEnglish = availableVoices.find((voice: SpeechSynthesisVoice) => voice.lang.startsWith("en"))
+
+    utterance.voice = primaryMale ?? googleMale ?? anyMale ?? googleAny ?? fallbackEnglish ?? null
+
+    utteranceRef.current = utterance
+    lastSpokenRef.current = rawText
+    utterance.onend = () => {
+      if (shouldResumeMicRef.current) {
+        shouldResumeMicRef.current = false
+        setTimeout(() => startMic().catch(console.error), 400)
+      }
+    }
+    utterance.onerror = () => {
+      if (shouldResumeMicRef.current) {
+        shouldResumeMicRef.current = false
+        setTimeout(() => startMic().catch(console.error), 400)
+      }
+    }
+    synth.speak(utterance)
+  }
+
   const handleSubmit = async (text: string, fromMic = false) => {
     if (!text.trim()) return
     const trimmed = text.trim()
     setMessages(m => [...m, { role: "user", text: trimmed, time: Date.now() }])
+
     
     // Add initial "thinking" message
     const thinkingMsg = { role: "bot" as const, text: "", time: Date.now() }
@@ -523,7 +597,7 @@ export default function AIHelper() {
     
     try {
       let fullReply = "";
-      const { reply, intent } = await fetchReply(trimmed, (chunk) => {
+      const { reply, intent } = await fetchReply(trimmed, (chunk: string) => {
         fullReply += chunk;
         setMessages(m => {
           const copy = [...m]
@@ -544,17 +618,22 @@ export default function AIHelper() {
       if (intent?.type === "navigate" && intent.target) {
         try { router.push(intent.target!) } catch {}
       }
+
+      const finalReply = fullReply || reply
+      speakBotReply(finalReply)
     } catch (e) {
       console.error("handleSubmit error", e)
       const fallback = lang === "bn"
         ? "দুঃখিত — কিছু সমস্যা হয়েছে। আবার বলুন বা টাইপ করুন।"
         : "Sorry — something went wrong. Please try again or type your question.";
-      
+
       setMessages(m => {
         const copy = [...m]
         copy[copy.length - 1] = { role: "bot", text: fallback, time: Date.now() }
         return copy
       })
+
+      speakBotReply(fallback)
     }
   }
 
@@ -861,7 +940,47 @@ export default function AIHelper() {
             >
               {lang === "en" ? "Clear" : "সাফ করুন"}
             </button>
-                        </div>
+            <button
+              onClick={toggleSpeaker}
+              aria-label={speakerEnabled ? "Disable speaker" : "Enable speaker"}
+              title={speakerEnabled ? "Disable AI voice" : "Enable AI voice (English only)"}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: "8px",
+                border: speakerEnabled ? "1.5px solid rgba(52, 199, 89, 0.8)" : "1.5px solid #e2e8f0",
+                background: speakerEnabled ? "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)" : "#ffffff",
+                color: speakerEnabled ? "#ffffff" : "#64748b",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                ;(e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 12px rgba(52, 199, 89, 0.25)"
+              }}
+              onMouseLeave={(e) => {
+                ;(e.currentTarget as HTMLButtonElement).style.boxShadow = "none"
+              }}
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M11 5 6 9H3v6h3l5 4z" />
+                <path d="M19.5 12a3.5 3.5 0 0 0-3.5-3.5" />
+                <path d="M21 12a5 5 0 0 0-5-5" />
+                {speakerEnabled && <path d="M19.5 12a3.5 3.5 0 0 1-3.5 3.5" />}
+              </svg>
+            </button>
+            </div>
             <button
               onClick={handleClose}
               aria-label={lang === "en" ? "Close assistant" : "সহকারী বন্ধ করুন"}
