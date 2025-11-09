@@ -1,5 +1,6 @@
 "use client"
 
+import { EncryptedText } from "@/components/ui/encrypted-text";
 import { useRouter } from "next/navigation"
 import { useRef, useState, useEffect } from "react"
 import { Zap, Calculator, Atom, FlaskConical, Leaf, Laptop } from "lucide-react"
@@ -90,9 +91,11 @@ const HeroSection = ({ language }: HeroProps) => {
           style={{ animationDelay: "0.2s" }}
         >
           {language === "en"
-            ? "National curriculum concepts through interactive 3D simulations. Easy Learning and Visualize complex phenomena, experiment safely, and enhance your learning experience."
-            : "ইন্টারেক্টিভ 3D সিমুলেশনের মাধ্যমে জাতীয় পাঠ্যক্রমের ধারণা। সহজে শেখা এবং জটিল ঘটনা কল্পনা করা, নিরাপদে পরীক্ষা করা এবং আপনার শেখার অভিজ্ঞতা উন্নত করা।"}
+            ? "National curriculum concepts through interactive 3D simulations. Easy Learning and Visualize complex phenomena, experiment safely, and enhance your "
+            : "ইন্টারেক্টিভ 3D সিমুলেশনের মাধ্যমে জাতীয় পাঠ্যক্রমের ধারণা। সহজে শেখা এবং জটিল ঘটনা কল্পনা করা, নিরাপদে পরীক্ষা করা এবং "}
+            <EncryptedText text={language === "en" ? "experience." : "আপনার শেখার অভিজ্ঞতা উন্নত করা।"} />
         </p>
+        
 
         <div
           className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-6 mx-auto"
@@ -125,31 +128,31 @@ const HeroSection = ({ language }: HeroProps) => {
               label: language === "en" ? "Chemistry" : "রসায়ন",
               desc: "Reactions & Atoms",
               route: "/chemistry",
-              gradient: "from-green-500 via-emerald-400 to-green-600",
-              glow: "shadow-green-500/50",
-              hoverGlow: "group-hover:shadow-green-500/80",
-              borderGlow: "border-green-400/60 group-hover:border-green-300",
+              gradient: " from-orange-500 via-red-400 to-orange-600",
+              glow: "shadow-orange-500/50",
+              hoverGlow: "group-hover:shadow-orange-500/80",
+              borderGlow: "border-orange-400/60 group-hover:border-orange-300",
             },
             {
               icon: Leaf,
               label: language === "en" ? "Biology" : "জীববিজ্ঞান",
               desc: "Life & Cells",
               route: "/biology",
-              gradient: "from-orange-500 via-red-400 to-orange-600",
-              glow: "shadow-orange-500/50",
-              hoverGlow: "group-hover:shadow-orange-500/80",
-              borderGlow: "border-orange-400/60 group-hover:border-orange-300",
-            },
-            {
-              icon: Laptop,
-              label: language === "en" ? "ICT" : "আইসিটি",
-              desc: "Info & Comms Tech",
-              route: "/ict",
-              gradient: "from-sky-500 via-blue-400 to-sky-600",
-              glow: "shadow-sky-500/50",
-              hoverGlow: "group-hover:shadow-sky-500/80",
-              borderGlow: "border-sky-400/60 group-hover:border-sky-300",
-            },
+              gradient: "from-green-500 via-emerald-400 to-green-600",
+              glow: "shadow-green-500/50",
+              hoverGlow: "group-hover:shadow-green-500/80",
+              borderGlow: "border-green-400/60 group-hover:border-green-300",
+              },
+              {
+                icon: Laptop,
+                label: language === "en" ? "ICT" : "আইসিটি",
+                desc: "Info & Comms Tech",
+                route: "/ict",
+                gradient: "from-purple-500 via-purple-400 to-purple-600",
+                glow: "shadow-purple-500/50",
+                hoverGlow: "group-hover:shadow-purple-500/80",
+                borderGlow: "border-purple-400/60 group-hover:border-purple-300",
+              },
           ].map((subject, idx) => {
             const IconComponent = subject.icon
             return (

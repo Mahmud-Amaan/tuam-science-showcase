@@ -97,7 +97,7 @@ export default function IctPage() {
 
         {/* Topics Grid */}
         <section className="pt-8 pb-16 px-4">
-          <div className="max-weg-7xl mx-auto">
+          <div className="max-w-7xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {topics.map((topic, idx) => (
                 <div

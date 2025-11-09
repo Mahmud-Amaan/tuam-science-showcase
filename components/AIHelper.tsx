@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { useTheme } from "next-themes";
 
 declare global {
   interface Window {
@@ -37,6 +38,7 @@ function markdownToSpeech(text: string) {
 
 export default function AIHelper() {
   const router = useRouter()
+  const { theme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [open, setOpen] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
@@ -485,10 +487,20 @@ export default function AIHelper() {
   function fetchReply(text: string, onChunk?: (chunk: string) => void) {
     return new Promise<{ reply: string; intent?: Intent }>(async (resolve) => {
       try {
+        // Send last 10 messages for context (5 exchanges)
+        const recentMessages = messages.slice(-10).map(m => ({
+          role: m.role === "user" ? "user" : "assistant",
+          content: m.text
+        }));
+
         const res = await fetch("/api/educator", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: text, language: lang }),
+          body: JSON.stringify({ 
+            message: text, 
+            language: lang,
+            history: recentMessages 
+          }),
         });
 
         if (!res.ok) throw new Error("API error");
@@ -665,6 +677,8 @@ export default function AIHelper() {
     return null
   }
 
+  const isDark = theme === 'dark'
+
   return (
     <>
       {!open && (
@@ -682,14 +696,14 @@ export default function AIHelper() {
               position: "absolute",
               bottom: 75,
               right: 10,
-              background: "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)",
+              background: isDark ? "linear-gradient(135deg, #2ecc71 0%, #34c759 100%)" : "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)",
               color: "white",
               padding: "8px 12px",
               borderRadius: "16px",
               fontSize: "12px",
               fontWeight: 600,
               whiteSpace: "nowrap",
-              boxShadow: "0 4px 12px rgba(52, 199, 89, 0.3)",
+              boxShadow: isDark ? "0 4px 12px rgba(0, 0, 0, 0.3)" : "0 4px 12px rgba(52, 199, 89, 0.3)",
               animation: "bounce 2s infinite, fadeInOut 3s infinite",
               pointerEvents: "none",
             }}
@@ -702,9 +716,9 @@ export default function AIHelper() {
                 right: 20,
                 width: 12,
                 height: 12,
-                background: "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)",
+                background: isDark ? "linear-gradient(135deg, #2ecc71 0%, #34c759 100%)" : "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)",
                 transform: "rotate(45deg)",
-                boxShadow: "2px 2px 4px rgba(52, 199, 89, 0.2)",
+                boxShadow: isDark ? "2px 2px 4px rgba(0, 0, 0, 0.2)" : "2px 2px 4px rgba(52, 199, 89, 0.2)",
               }}
             />
           </div>
@@ -722,10 +736,9 @@ export default function AIHelper() {
               width: 72,
               height: 72,
               borderRadius: "50%",
-              background: "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)",
-              border: "3px solid rgba(255, 255, 255, 0.9)",
-              boxShadow:
-                "0 16px 40px rgba(52, 199, 89, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 12px rgba(0, 0, 0, 0.15)",
+              background: isDark ? "linear-gradient(135deg, #2ecc71 0%, #34c759 100%)" : "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)",
+              border: isDark ? "3px solid rgba(0, 0, 0, 0.9)" : "3px solid rgba(255, 255, 255, 0.9)",
+              boxShadow: isDark ? "0 16px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 12px rgba(0, 0, 0, 0.15)" : "0 16px 40px rgba(52, 199, 89, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 12px rgba(0, 0, 0, 0.15)",
               color: "white",
               display: "flex",
               alignItems: "center",
@@ -739,13 +752,11 @@ export default function AIHelper() {
             }}
             onMouseEnter={(e) => {
               ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1.2) translateY(-10px)"
-              ;(e.currentTarget as HTMLButtonElement).style.boxShadow =
-                "0 24px 48px rgba(52, 199, 89, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 10px 20px rgba(0, 0, 0, 0.2)"
+              ;(e.currentTarget as HTMLButtonElement).style.boxShadow = isDark ? "0 24px 48px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 10px 20px rgba(0, 0, 0, 0.2)" : "0 24px 48px rgba(52, 199, 89, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 10px 20px rgba(0, 0, 0, 0.2)"
             }}
             onMouseLeave={(e) => {
               ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1) translateY(0)"
-              ;(e.currentTarget as HTMLButtonElement).style.boxShadow =
-                "0 16px 40px rgba(52, 199, 89, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 12px rgba(0, 0, 0, 0.15)"
+              ;(e.currentTarget as HTMLButtonElement).style.boxShadow = isDark ? "0 16px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 12px rgba(0, 0, 0, 0.15)" : "0 16px 40px rgba(52, 199, 89, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 12px rgba(0, 0, 0, 0.15)"
             }}
           >
             <RobotIcon />
@@ -758,8 +769,8 @@ export default function AIHelper() {
               right: 0,
               bottom: 0,
               borderRadius: "50%",
-              border: "3px solid #2ecc71",
-              animation: "pulse-ring 2s infinite",
+              border: isDark ? "3px solid #2ecc71" : "3px solid #2ecc71",
+              animation: isDark ? "pulse-ring 2s infinite" : "pulse-ring 2s infinite",
               pointerEvents: "none",
             }}
           >
@@ -807,8 +818,12 @@ export default function AIHelper() {
             bottom: 0,
             zIndex: 9998,
             width: sidebarWidth,
-            background: "linear-gradient(to bottom, #ffffff 0%, #f8fafc 100%)",
-            boxShadow: "-8px 0 32px rgba(0, 0, 0, 0.15), -2px 0 8px rgba(0, 0, 0, 0.08)",
+            background: isDark
+              ? "linear-gradient(to bottom, #1e293b 0%, #0f172a 100%)"
+              : "linear-gradient(to bottom, #ffffff 0%, #f8fafc 100%)",
+            boxShadow: isDark
+              ? "-8px 0 32px rgba(0, 0, 0, 0.5), -2px 0 8px rgba(0, 0, 0, 0.3)"
+              : "-8px 0 32px rgba(0, 0, 0, 0.15), -2px 0 8px rgba(0, 0, 0, 0.08)",
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
@@ -868,11 +883,11 @@ export default function AIHelper() {
           <div
             style={{
               padding: "14px 16px",
-              borderBottom: "1px solid #e2e8f0",
+              borderBottom: isDark ? "1px solid #334155" : "1px solid #e2e8f0",
               display: "flex",
               gap: "10px",
               alignItems: "center",
-              background: "rgba(248, 250, 252, 0.5)",
+              background: isDark ? "rgba(15, 23, 42, 0.5)" : "rgba(248, 250, 252, 0.5)",
               flexWrap: "wrap",
               justifyContent: "space-between",
             }}
@@ -886,8 +901,8 @@ export default function AIHelper() {
               style={{
                 padding: "8px 14px",
                 borderRadius: "8px",
-                border: "1.5px solid #e2e8f0",
-                background: "#ffffff",
+                border: isDark ? "1.5px solid #334155" : "1.5px solid #e2e8f0",
+                background: isDark ? "#1e293b" : "#ffffff",
                 cursor: "pointer",
                 fontSize: "13px",
                 fontWeight: 600,
@@ -895,12 +910,12 @@ export default function AIHelper() {
                 color: "#34c759",
               }}
               onMouseEnter={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.background = "#f1f5f9"
+                ;(e.currentTarget as HTMLButtonElement).style.background = isDark ? "#334155" : "#f1f5f9"
                 ;(e.currentTarget as HTMLButtonElement).style.borderColor = "#34c759"
               }}
               onMouseLeave={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.background = "#ffffff"
-                ;(e.currentTarget as HTMLButtonElement).style.borderColor = "#e2e8f0"
+                ;(e.currentTarget as HTMLButtonElement).style.background = isDark ? "#1e293b" : "#ffffff"
+                ;(e.currentTarget as HTMLButtonElement).style.borderColor = isDark ? "#334155" : "#e2e8f0"
               }}
             >
               {lang === "en" ? "বাংলা" : "EN"}
@@ -921,8 +936,8 @@ export default function AIHelper() {
               style={{
                 padding: "8px 14px",
                 borderRadius: "8px",
-                border: "1px solid #e2e8f0",
-                background: "#ffffff",
+                border: isDark ? "1px solid #334155" : "1px solid #e2e8f0",
+                background: isDark ? "#1e293b" : "#ffffff",
                 cursor: "pointer",
                 fontSize: "13px",
                 fontWeight: 600,
@@ -930,12 +945,12 @@ export default function AIHelper() {
                 color: "#2ecc71",
               }}
               onMouseEnter={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.background = "#f1f5f9"
+                ;(e.currentTarget as HTMLButtonElement).style.background = isDark ? "#334155" : "#f1f5f9"
                 ;(e.currentTarget as HTMLButtonElement).style.borderColor = "#2ecc71"
               }}
               onMouseLeave={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.background = "#ffffff"
-                ;(e.currentTarget as HTMLButtonElement).style.borderColor = "#e2e8f0"
+                ;(e.currentTarget as HTMLButtonElement).style.background = isDark ? "#1e293b" : "#ffffff"
+                ;(e.currentTarget as HTMLButtonElement).style.borderColor = isDark ? "#334155" : "#e2e8f0"
               }}
             >
               {lang === "en" ? "Clear" : "সাফ করুন"}
@@ -948,8 +963,8 @@ export default function AIHelper() {
                 width: 40,
                 height: 40,
                 borderRadius: "8px",
-                border: speakerEnabled ? "1.5px solid rgba(52, 199, 89, 0.8)" : "1.5px solid #e2e8f0",
-                background: speakerEnabled ? "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)" : "#ffffff",
+                border: speakerEnabled ? "1.5px solid rgba(52, 199, 89, 0.8)" : isDark ? "1.5px solid #334155" : "1.5px solid #e2e8f0",
+                background: speakerEnabled ? "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)" : isDark ? "#1e293b" : "#ffffff",
                 color: speakerEnabled ? "#ffffff" : "#64748b",
                 cursor: "pointer",
                 display: "flex",
@@ -958,7 +973,7 @@ export default function AIHelper() {
                 transition: "all 0.2s",
               }}
               onMouseEnter={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 12px rgba(52, 199, 89, 0.25)"
+                ;(e.currentTarget as HTMLButtonElement).style.boxShadow = isDark ? "0 4px 12px rgba(0, 0, 0, 0.25)" : "0 4px 12px rgba(52, 199, 89, 0.25)"
               }}
               onMouseLeave={(e) => {
                 ;(e.currentTarget as HTMLButtonElement).style.boxShadow = "none"
@@ -985,8 +1000,8 @@ export default function AIHelper() {
               onClick={handleClose}
               aria-label={lang === "en" ? "Close assistant" : "সহকারী বন্ধ করুন"}
               style={{
-                background: "rgba(239, 68, 68, 0.12)",
-                border: "1px solid rgba(239, 68, 68, 0.22)",
+                background: isDark ? "rgba(239, 68, 68, 0.18)" : "rgba(239, 68, 68, 0.12)",
+                border: isDark ? "1px solid #334155" : "1px solid rgba(239, 68, 68, 0.22)",
                 color: "#ef4444",
                 width: 40,
                 height: 40,
@@ -998,11 +1013,11 @@ export default function AIHelper() {
                 transition: "all 0.2s",
               }}
               onMouseEnter={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.background = "rgba(239, 68, 68, 0.18)"
+                ;(e.currentTarget as HTMLButtonElement).style.background = isDark ? "rgba(239, 68, 68, 0.25)" : "rgba(239, 68, 68, 0.18)"
                 ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1.1)"
               }}
               onMouseLeave={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.background = "rgba(239, 68, 68, 0.12)"
+                ;(e.currentTarget as HTMLButtonElement).style.background = isDark ? "rgba(239, 68, 68, 0.18)" : "rgba(239, 68, 68, 0.12)"
                 ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1)"
               }}
             >
@@ -1030,7 +1045,9 @@ export default function AIHelper() {
               flex: 1,
               overflowY: "auto",
               padding: "18px",
-              background: "linear-gradient(to bottom, #f8fafc 0%, #f1f5f9 100%)",
+              background: isDark
+                ? "linear-gradient(to bottom, #0f172a 0%, #1e293b 100%)"
+                : "linear-gradient(to bottom, #f8fafc 0%, #f1f5f9 100%)",
               display: "flex",
               flexDirection: "column",
               gap: "14px",
@@ -1052,7 +1069,7 @@ export default function AIHelper() {
                       width: "32px",
                       height: "32px",
                       borderRadius: "50%",
-                      background: "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)",
+                      background: isDark ? "linear-gradient(135deg, #2ecc71 0%, #34c759 100%)" : "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -1077,12 +1094,16 @@ export default function AIHelper() {
                     maxWidth: m.role === "user" ? "85%" : "calc(100% - 40px)",
                     padding: "12px 16px",
                     borderRadius: m.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-                    background: m.role === "user" ? "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)" : "white",
-                    color: m.role === "user" ? "white" : "#1e293b",
+                    background: m.role === "user" 
+                      ? "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)" 
+                      : isDark ? "#1e293b" : "white",
+                    color: m.role === "user" ? "white" : isDark ? "#e2e8f0" : "#1e293b",
                     boxShadow: m.role === "bot"
-                      ? "0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)"
+                      ? isDark
+                        ? "0 2px 8px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2)"
+                        : "0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)"
                       : "0 1px 3px rgba(52, 199, 89, 0.1)",
-                    border: m.role === "bot" ? "1px solid #e2e8f0" : "none",
+                    border: m.role === "bot" ? isDark ? "1px solid #334155" : "1px solid #e2e8f0" : "none",
                     fontSize: "14px",
                     lineHeight: "1.6",
                     wordWrap: "break-word",
@@ -1123,12 +1144,12 @@ export default function AIHelper() {
           <div
             style={{
               padding: "16px",
-              borderTop: "1px solid #e2e8f0",
+              borderTop: isDark ? "1px solid #334155" : "1px solid #e2e8f0",
               display: "flex",
               gap: "12px",
               alignItems: "flex-end",
-              background: "white",
-              boxShadow: "0 -4px 12px rgba(0, 0, 0, 0.04)",
+              background: isDark ? "#1e293b" : "white",
+              boxShadow: isDark ? "0 -4px 12px rgba(0, 0, 0, 0.3)" : "0 -4px 12px rgba(0, 0, 0, 0.04)",
             }}
           >
             {/* Microphone Button */}
@@ -1140,8 +1161,8 @@ export default function AIHelper() {
                     width: "44px",
                     height: "44px",
                     borderRadius: "50%",
-                    border: "2px solid #e2e8f0",
-                    background: listening ? "#34c759" : "#ffffff",
+                    border: isDark ? "2px solid #334155" : "2px solid #e2e8f0",
+                    background: listening ? "#34c759" : isDark ? "#1e293b" : "#ffffff",
                     color: listening ? "white" : "#64748b",
                     cursor: "pointer",
                     display: "flex",
@@ -1170,10 +1191,13 @@ export default function AIHelper() {
                 flex: 1,
                 padding: "12px 16px",
                 borderRadius: "10px",
-                border: "1.5px solid #e2e8f0",
+                border: isDark ? "1.5px solid #334155" : "1.5px solid #e2e8f0",
                 outline: "none",
                 fontSize: "14px",
-                background: speechToSpeechMode ? "#f1f5f9" : "#f8fafc",
+                background: speechToSpeechMode 
+                  ? isDark ? "#0f172a" : "#f1f5f9" 
+                  : isDark ? "#1e293b" : "#f8fafc",
+                color: isDark ? "#e2e8f0" : "#1e293b",
                 fontWeight: 500,
                 opacity: speechToSpeechMode ? 0.6 : 1,
                 fontFamily: lang === "bn" ? "'Noto Sans Bengali', 'Hind Siliguri', sans-serif" : "inherit",
@@ -1181,13 +1205,13 @@ export default function AIHelper() {
               onFocus={(e) => {
                 if (!speechToSpeechMode) {
                   ;(e.currentTarget as HTMLInputElement).style.borderColor = "#34c759"
-                  ;(e.currentTarget as HTMLInputElement).style.background = "#ffffff"
+                  ;(e.currentTarget as HTMLInputElement).style.background = isDark ? "#0f172a" : "#ffffff"
                   ;(e.currentTarget as HTMLInputElement).style.boxShadow = "0 0 0 3px rgba(52, 199, 89, 0.1)"
                 }
               }}
               onBlur={(e) => {
-                ;(e.currentTarget as HTMLInputElement).style.borderColor = "#e2e8f0"
-                ;(e.currentTarget as HTMLInputElement).style.background = "#f8fafc"
+                ;(e.currentTarget as HTMLInputElement).style.borderColor = isDark ? "#334155" : "#e2e8f0"
+                ;(e.currentTarget as HTMLInputElement).style.background = isDark ? "#1e293b" : "#f8fafc"
                 ;(e.currentTarget as HTMLInputElement).style.boxShadow = "none"
               }}
             />
@@ -1204,23 +1228,25 @@ export default function AIHelper() {
                 padding: "12px 18px",
                 borderRadius: "10px",
                 border: "none",
-                background: speechToSpeechMode ? "#cbd5e1" : "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)",
+                background: speechToSpeechMode 
+                  ? isDark ? "#0f172a" : "#cbd5e1" 
+                  : "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)",
                 color: "white",
                 cursor: speechToSpeechMode ? "not-allowed" : "pointer",
                 fontWeight: 600,
-                boxShadow: speechToSpeechMode ? "none" : "0 4px 12px rgba(52, 199, 89, 0.2)",
+                boxShadow: speechToSpeechMode ? "none" : isDark ? "0 4px 12px rgba(0, 0, 0, 0.2)" : "0 4px 12px rgba(52, 199, 89, 0.2)",
                 opacity: speechToSpeechMode ? 0.6 : 1,
               }}
               onMouseEnter={(e) => {
                 if (!speechToSpeechMode) {
                   ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1.08)"
-                  ;(e.currentTarget as HTMLButtonElement).style.boxShadow = "0 8px 20px rgba(52, 199, 89, 0.3)"
+                  ;(e.currentTarget as HTMLButtonElement).style.boxShadow = isDark ? "0 8px 20px rgba(0, 0, 0, 0.3)" : "0 8px 20px rgba(52, 199, 89, 0.3)"
                 }
               }}
               onMouseLeave={(e) => {
                 if (!speechToSpeechMode) {
                   ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1)"
-                  ;(e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 12px rgba(52, 199, 89, 0.2)"
+                  ;(e.currentTarget as HTMLButtonElement).style.boxShadow = isDark ? "0 4px 12px rgba(0, 0, 0, 0.2)" : "0 4px 12px rgba(52, 199, 89, 0.2)"
                 }
               }}
             >
@@ -1270,7 +1296,7 @@ export default function AIHelper() {
             right: sidebarWidth,
             bottom: 0,
             zIndex: 9997,
-            background: "rgba(0, 0, 0, 0.12)",
+            background: isDark ? "rgba(0, 0, 0, 0.5)" : "rgba(0, 0, 0, 0.12)",
             animation: "fadeIn 0.35s ease-in forwards",
             backdropFilter: "blur(2px)",
           }}

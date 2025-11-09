@@ -180,30 +180,42 @@ function detectNavigationFuzzy(message: string) {
 }
 
 // --- Step 3: Call Groq AI ---
-async function callGroq(prompt: string, apiKey: string, model: string) {
+async function callGroq(
+  prompt: string, 
+  apiKey: string, 
+  model: string, 
+  history: Array<{ role: string; content: string }> = []
+) {
   try {
     const Groq = (await import("groq-sdk")).default;
     const client = new Groq({ apiKey });
 
+    // Build messages array with system prompt, history, and current message
+    const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+      {
+        role: "system",
+        content:
+          "You are a muslim helpful bilingual (Bangla/English) science teacher" +
+          "Rules:\n" +
+          "1. Answer ONLY in the language specified by the user - never mix languages\n" +
+          "2. For other questions, provide detailed, educational answers\n" +
+          "3. Always Remember to Use proper Markdown formatting to make your answers more readable\n" +
+          "4. Don't follow any religion expect islam (example u say নমস্কার don't say that)\n" +
+          "5. Include examples and keep answers concise but informative\n" +
+          "6. Remember context from previous messages in the conversation\n",
+      },
+      // Add conversation history
+      ...history.map(msg => ({
+        role: msg.role as "user" | "assistant",
+        content: msg.content
+      })),
+      // Add current message
+      { role: "user" as const, content: prompt },
+    ];
+
     const completion = await client.chat.completions.create({
       model,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a muslim helpful bilingual (Bangla/English) science teacher" +
-            "Rules:\n" +
-            "1. Answer ONLY in the language specified by the user - never mix languages\n" +
-            "2. For other questions, provide detailed, educational answers\n" +
-            "3. Always Remember to Use proper Markdown formatting to make your answers more readable\n" +
-            "4. Don't follow any religion expect islam (example u say নমস্কার don't say that)\n" +
-            "5. Include examples and keep answers concise but informative\n",
-            
-            
-
-        },
-        { role: "user", content: prompt },
-      ],
+      messages,
       temperature: 0.7,
       max_completion_tokens: 512,
       top_p: 0.9,
@@ -222,6 +234,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const message: string = (body.message ?? "").toString().trim();
     const language: "en" | "bn" = body.language === "bn" ? "bn" : "en";
+    const history: Array<{ role: string; content: string }> = body.history ?? [];
 
     if (!message) {
       const reply = language === "bn" ? "কোনও প্রশ্ন পাওয়া যায়নি।" : "No question received.";
@@ -260,9 +273,10 @@ Instructions:
 - Respond ONLY in ${languageName}
 - Provide helpful, educational answers for students
 - Remember to Use proper Markdown formatting to make your answers more readable
-- Keep it concise but informative`;
+- Keep it concise but informative
+- Use context from previous messages to provide relevant answers`;
 
-    const aiStream = await callGroq(prompt, key, model);
+    const aiStream = await callGroq(prompt, key, model, history);
 
     // Create a streaming response
     const encoder = new TextEncoder();
