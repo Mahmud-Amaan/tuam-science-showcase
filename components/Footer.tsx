@@ -35,10 +35,8 @@ const Footer = ({ language }: FooterProps) => {
             <h4 className="text-lg font-semibold">{language === "en" ? "Follow Us" : "আমাদের অনুসরণ করুন"}</h4>
             <div className="flex items-center gap-4">
               {[
-                { icon: Facebook, label: "Facebook", url: "#" },
-                { icon: Twitter, label: "Twitter", url: "#" },
-                { icon: Linkedin, label: "LinkedIn", url: "#" },
-                { icon: Youtube, label: "YouTube", url: "#" },
+                { icon: Facebook, label: "Facebook", url: "https://www.facebook.com/profile.php?id=61583732933993&sk=followers" },
+                { icon: Twitter, label: "Twitter", url: "https://x.com/virtual91288" },
               ].map((social, idx) => {
                 const Icon = social.icon
                 return (
