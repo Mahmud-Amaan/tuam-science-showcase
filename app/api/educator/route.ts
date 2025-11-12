@@ -184,6 +184,24 @@ function detectNavigationFuzzy(message: string) {
   return null;
 }
 
+// Function to extract context from a path
+function extractContextFromPath(path: string) {
+  // Remove leading slash and split
+  const segments = path.replace(/^\/|\/$/g, "").split("/");
+  if (segments.length === 0) return null;
+
+  const context = {
+    main: segments[0] || "",
+    topic: segments[1] || "",
+  };
+
+  const topicName = context.topic
+    ? `${context.main} - ${context.topic}` 
+    : context.main;
+
+  return topicName || null;
+}
+
 // --- Step 3: Call Groq AI ---
 async function callGroq(
   prompt: string, 
@@ -256,6 +274,11 @@ export async function POST(req: Request) {
 
     const messageLower = message.toLowerCase();
 
+    // Detect simulation context
+    const referer = req.headers.get("referer") || "";
+    const contextPath = body.contextPath || referer.split("/").slice(3).join("/") || "/";
+    const simulationContext = extractContextFromPath(contextPath);
+
     // Quick check for navigation intent
     const quickIntent = detectNavigationFuzzy(messageLower);
     if (quickIntent) {
@@ -279,8 +302,9 @@ export async function POST(req: Request) {
     }
 
     const languageName = language === "bn" ? "Bangla (বাংলা)" : "English";
+    const contextInfo = simulationContext ? `[Current Context: ${simulationContext}] ` : "";
     const prompt = `Language: ${languageName}
-User Question: ${message}
+${contextInfo}User Question: ${message}
 
 Instructions:
 - Respond ONLY in ${languageName}

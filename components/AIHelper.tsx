@@ -2,7 +2,7 @@
 import ReactMarkdown from "react-markdown";
 import type React from "react"
 import { useEffect, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useTheme } from "next-themes";
@@ -38,6 +38,7 @@ function markdownToSpeech(text: string) {
 
 export default function AIHelper() {
   const router = useRouter()
+  const pathname = usePathname()
   const { theme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [open, setOpen] = useState(false)
@@ -50,6 +51,7 @@ export default function AIHelper() {
   const [listening, setListening] = useState(false);
   const [speakerEnabled, setSpeakerEnabled] = useState(false)
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
+  const [context, setContext] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const resizeStartX = useRef(0)
@@ -86,6 +88,24 @@ export default function AIHelper() {
   // Detect mobile device and iOS specifically
   const isMobile = typeof window !== "undefined" && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
   const isIOS = typeof window !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent)
+
+  // Format the context from the path
+  const formatContextFromPath = (path: string) => {
+    if (!path) return null;
+    const segments = path.split('/').filter(segment => segment.trim() !== '');
+    if (segments.length === 0) return null;
+    // Capitalize each segment and join with arrow
+    const formatted = segments.map(seg => seg.charAt(0).toUpperCase() + seg.slice(1)).join(' → ');
+    return formatted;
+  };
+
+  // Update context when the route changes
+  useEffect(() => {
+    if (pathname) {
+      const formatted = formatContextFromPath(pathname);
+      setContext(formatted);
+    }
+  }, [pathname]);
 
   // Initialize component on client-side only
   useEffect(() => { 
@@ -604,7 +624,8 @@ export default function AIHelper() {
           body: JSON.stringify({ 
             message: text, 
             language: lang,
-            history: recentMessages 
+            history: recentMessages,
+            contextPath: pathname // Add this line
           }),
         });
 
@@ -1139,10 +1160,11 @@ export default function AIHelper() {
                 strokeLinejoin="round"
               >
                 <path d="M11 5 6 9H3v6h3l5 4z" />
-                <path d="M19.5 12a3.5 3.5 0 0 0-3.5-3.5" />
-                <path d="M21 12a5 5 0 0 0-5-5" />
-                {speakerEnabled && <path d="M19.5 12a3.5 3.5 0 0 1-3.5 3.5" />}
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
               </svg>
+              {speakerEnabled && <path d="M19.5 12a3.5 3.5 0 0 1-3.5 3.5" />}
             </button>
             </div>
             <button
@@ -1202,6 +1224,11 @@ export default function AIHelper() {
               gap: "14px",
             }}
           >
+            {context && (
+              <div className="text-xs font-medium text-center p-2 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100 rounded-lg mx-2 mb-2">
+                <span className="font-bold">Learning Context:</span> {context}
+              </div>
+            )}
             {messages.map((m, i) => (
               <div
                 key={i}
