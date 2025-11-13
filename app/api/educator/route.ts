@@ -236,7 +236,7 @@ async function callGroq(
           "7. **Reasoning**: Before answering, reason step-by-step to ensure accuracy. Think like a scientist!\n" +
           "8. **Engagement**: Ask follow-up questions to encourage deeper thinking when appropriate.\n" +
           "9. **Context**: Consider the current simulation context (if provided) and the conversation history to provide relevant answers.\n" +
-          (speakerMode ? "10. **Speaker Mode**: Reply in 1-3 complete sentence (40 words or fewer). No lists or points" : ""),
+          (speakerMode ? "10. **Speaker Mode**: Reply in 1-3 complete sentence (60 words or fewer). No lists or points" : ""),
       },
       // Add conversation history
       ...history.map(msg => ({
@@ -317,7 +317,7 @@ Instructions:
 - Keep answers concise but informative
 - Use context from previous messages to provide relevant answers
 - Include examples when helpful` +
-      (speakerMode ? "\n- **Speaker Mode**: Respond with exactly 1-3 complete sentences of 40 words or fewer, no bullet points." : "");
+      (speakerMode ? "\n- **Speaker Mode**: Respond with exactly 1-3 complete sentences of 60 words or fewer, no bullet points." : "");
 
     const aiStream = await callGroq(prompt, key, model, history, speakerMode);
 
