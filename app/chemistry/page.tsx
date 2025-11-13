@@ -53,6 +53,14 @@ export default function ChemistryPage() {
       icon: "🧭",
       href: "/chemistry/periodic-table",
     },
+    {
+      titleEn: "Kids Experiment House",
+      titleBn: "শিশুদের পরীক্ষা ঘর",
+      descEn: "Fun and educational chemistry experiments for children",
+      descBn: "শিশুদের জন্য মজার এবং শিক্ষামূলক রসায়ন পরীক্ষা",
+      icon: "🏠",
+      href: "/chemistry/kids-experiment-house",
+    },
   ]
 
   return (
