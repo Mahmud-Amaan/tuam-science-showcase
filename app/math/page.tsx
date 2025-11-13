@@ -37,6 +37,14 @@ export default function MathPage() {
       icon: "🔺",
       route: "/math/trigonometry",
     },
+    {
+      titleEn: "Arithmetic Practice",
+      titleBn: "গাণিতিক অনুশীলন",
+      descEn: "Practice basic arithmetic operations with interactive PhET simulation",
+      descBn: "ইন্টারঅ্যাক্টিভ PhET সিমুলেশন দিয়ে মৌলিক গাণিতিক অপারেশন অনুশীলন করুন",
+      icon: "🧮",
+      route: "/math/arithmetic-practice",
+    },
   ]
 
   return (

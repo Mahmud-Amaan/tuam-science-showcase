@@ -45,6 +45,14 @@ export default function PhysicsPage() {
       icon: "🔭",
       route: "/physics/optics",
     },
+    {
+      titleEn: "oPhysics Multiple Simulator",
+      titleBn: "oPhysics মাল্টিপল সিমুলেটর",
+      descEn: "GeoGebra based 2d simulation of physics created by author Tom Walsh for education",
+      descBn: "একাধিক মডিউল সহ ব্যাপক পদার্থবিজ্ঞান সিমুলেশন টুল",
+      icon: "🔬",
+      route: "/physics/ophysics-simulator",
+    },
   ]
 
   return (
