@@ -52,6 +52,7 @@ export default function AIHelper() {
   const [speakerEnabled, setSpeakerEnabled] = useState(false)
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [context, setContext] = useState<string | null>(null);
+  const [viewportWidth, setViewportWidth] = useState<number>(typeof window !== "undefined" ? window.innerWidth : 1280);
 
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const resizeStartX = useRef(0)
@@ -106,6 +107,17 @@ export default function AIHelper() {
       setContext(formatted);
     }
   }, [pathname]);
+
+  // Track viewport width for responsive layout & motion tweaks
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleResize = () => {
+      setViewportWidth(window.innerWidth);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize, { passive: true });
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Initialize component on client-side only
   useEffect(() => { 
@@ -173,6 +185,7 @@ export default function AIHelper() {
   }, [messages, open])
 
   const handleResizeStart = (e: React.MouseEvent) => {
+    if (viewportWidth < 820) return
     e.preventDefault()
     e.stopPropagation()
     setIsResizing(true)
@@ -825,6 +838,11 @@ export default function AIHelper() {
   }
 
   const isDark = theme === 'dark'
+  const isCompactLayout = viewportWidth < 820
+  const panelWidth = isCompactLayout
+    ? Math.max(320, Math.min(520, viewportWidth - 24))
+    : Math.min(Math.max(sidebarWidth, 380), Math.floor(Math.max(400, viewportWidth * 0.38)))
+  const sidebarWidthStyle = `${panelWidth}px`
 
   return (
     <>
@@ -837,138 +855,122 @@ export default function AIHelper() {
             zIndex: 9999,
           }}
         >
-          {/* Animated Chat Bubble */}
           <div
             style={{
-              position: "absolute",
-              bottom: 75,
-              right: 10,
-              background: isDark ? "linear-gradient(135deg, #2ecc71 0%, #34c759 100%)" : "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)",
-              color: "white",
-              padding: "8px 12px",
+              width: viewportWidth < 400 ? Math.min(190, viewportWidth - 28) : 206,
+              padding: viewportWidth < 400 ? "14px 14px" : "16px 16px",
               borderRadius: "16px",
-              fontSize: "12px",
-              fontWeight: 600,
-              whiteSpace: "nowrap",
-              boxShadow: isDark ? "0 4px 12px rgba(0, 0, 0, 0.3)" : "0 4px 12px rgba(52, 199, 89, 0.3)",
-              animation: "bounce 2s infinite, fadeInOut 3s infinite",
-              pointerEvents: "none",
+              background: isDark
+                ? "linear-gradient(160deg, rgba(15, 23, 42, 0.92), rgba(30, 64, 175, 0.65))"
+                : "linear-gradient(160deg, rgba(248, 250, 252, 0.95), rgba(59, 130, 246, 0.32))",
+              boxShadow: isDark
+                ? "0 16px 32px rgba(2, 6, 23, 0.5), 0 5px 14px rgba(30, 64, 175, 0.32)"
+                : "0 16px 30px rgba(59, 130, 246, 0.24), 0 5px 14px rgba(148, 163, 184, 0.16)",
+              border: isDark ? "1px solid rgba(94, 234, 212, 0.24)" : "1px solid rgba(148, 163, 184, 0.28)",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              textAlign: "center",
+              gap: viewportWidth < 400 ? 6 : 8,
+              position: "relative",
+              paddingTop: viewportWidth < 400 ? "26px" : "28px",
             }}
           >
-            {bubbleTexts[0]}
             <div
               style={{
                 position: "absolute",
-                bottom: -6,
-                right: 20,
-                width: 12,
-                height: 12,
-                background: isDark ? "linear-gradient(135deg, #2ecc71 0%, #34c759 100%)" : "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)",
-                transform: "rotate(45deg)",
-                boxShadow: isDark ? "2px 2px 4px rgba(0, 0, 0, 0.2)" : "2px 2px 4px rgba(52, 199, 89, 0.2)",
+                top: viewportWidth < 400 ? "-20px" : "-22px",
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: viewportWidth < 400 ? 46 : 52,
+                height: viewportWidth < 400 ? 46 : 52,
+                borderRadius: "50%",
+                background: isDark
+                  ? "linear-gradient(140deg, rgba(13, 148, 136, 0.9), rgba(59, 130, 246, 0.85))"
+                  : "linear-gradient(140deg, rgba(45, 212, 191, 0.9), rgba(59, 130, 246, 0.9))",
+                border: "2px solid rgba(255, 255, 255, 0.75)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: isDark
+                  ? "0 12px 24px rgba(6, 182, 212, 0.38)"
+                  : "0 12px 24px rgba(59, 130, 246, 0.28)",
               }}
-            />
-          </div>
-          
-          <button
-            onClick={(e) => {
-              console.log("[v0] Button clicked, open state:", open)
-              e.preventDefault()
-              e.stopPropagation()
-              setOpen(true)
-            }}
-            aria-label="Open AI helper"
-            title="Open AI Educator"
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: "50%",
-              background: isDark ? "linear-gradient(135deg, #2ecc71 0%, #34c759 100%)" : "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)",
-              border: isDark ? "3px solid rgba(0, 0, 0, 0.9)" : "3px solid rgba(255, 255, 255, 0.9)",
-              boxShadow: isDark ? "0 16px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 12px rgba(0, 0, 0, 0.15)" : "0 16px 40px rgba(52, 199, 89, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 12px rgba(0, 0, 0, 0.15)",
-              color: "white",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
-              transform: "scale(1)",
-              position: "relative",
-              zIndex: 10000,
-              overflow: "hidden",
-            }}
-            onMouseEnter={(e) => {
-              ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1.2) translateY(-10px)"
-              ;(e.currentTarget as HTMLButtonElement).style.boxShadow = isDark ? "0 24px 48px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 10px 20px rgba(0, 0, 0, 0.2)" : "0 24px 48px rgba(52, 199, 89, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 10px 20px rgba(0, 0, 0, 0.2)"
-            }}
-            onMouseLeave={(e) => {
-              ;(e.currentTarget as HTMLButtonElement).style.transform = "scale(1) translateY(0)"
-              ;(e.currentTarget as HTMLButtonElement).style.boxShadow = isDark ? "0 16px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 12px rgba(0, 0, 0, 0.15)" : "0 16px 40px rgba(52, 199, 89, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 12px rgba(0, 0, 0, 0.15)"
-            }}
-          >
-            <RobotIcon />
-            {/* Microphone active indicator */}
-            {listening && (
+            >
               <div
                 style={{
-                  position: "absolute",
-                  top: 4,
-                  right: 4,
-                  width: 16,
-                  height: 16,
+                  width: viewportWidth < 420 ? 32 : 36,
+                  height: viewportWidth < 420 ? 32 : 36,
                   borderRadius: "50%",
-                  background: "#ef4444",
-                  border: "2px solid white",
-                  animation: "pulse 1.5s infinite",
-                  zIndex: 10001,
+                  background: isDark ? "rgba(2, 6, 23, 0.85)" : "rgba(248, 250, 252, 0.92)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 6px 12px rgba(15, 23, 42, 0.25)",
                 }}
-              />
-            )}
-          </button>
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              borderRadius: "50%",
-              border: isDark ? "3px solid #2ecc71" : "3px solid #2ecc71",
-              animation: isDark ? "pulse-ring 2s infinite" : "pulse-ring 2s infinite",
-              pointerEvents: "none",
-            }}
-          >
-            <style>{`
-              @keyframes pulse-ring {
-                0% {
-                  transform: scale(1);
-                  opacity: 1;
-                }
-                100% {
-                  transform: scale(1.5);
-                  opacity: 0;
-                }
-              }
-              @keyframes bounce {
-                0%, 20%, 50%, 80%, 100% {
-                  transform: translateY(0);
-                }
-                40% {
-                  transform: translateY(-8px);
-                }
-                60% {
-                  transform: translateY(-4px);
-                }
-              }
-              @keyframes fadeInOut {
-                0%, 100% {
-                  opacity: 0.9;
-                }
-                50% {
-                  opacity: 0.6;
-                }
-              }
-            `}</style>
+              >
+                <img
+                  src="/ai-icon.png"
+                  alt="AI Assistant"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    borderRadius: "50%",
+                  }}
+                />
+              </div>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: viewportWidth < 400 ? 2 : 3,
+                marginTop: viewportWidth < 400 ? 3 : 5,
+              }}
+            >
+              <span style={{ fontSize: viewportWidth < 400 ? "11px" : "12px", fontWeight: 600, letterSpacing: "0.24em", textTransform: "uppercase", opacity: 0.76 }}>
+                {lang === "en" ? "AI Tutor" : "এআই শিক্ষক"}
+              </span>
+            </div>
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setOpen(true)
+              }}
+              style={{
+                marginTop: viewportWidth < 400 ? 2 : 3,
+                padding: viewportWidth < 400 ? "6px 14px" : "7.5px 20px",
+                borderRadius: 8,
+                border: "none",
+                background: isDark
+                  ? "linear-gradient(120deg, rgba(45, 212, 191, 0.88), rgba(56, 189, 248, 0.85))"
+                  : "linear-gradient(120deg, rgba(59, 130, 246, 0.9), rgba(45, 212, 191, 0.9))",
+                color: "white",
+                fontWeight: 600,
+                fontSize: viewportWidth < 400 ? "10.6px" : "11.4px",
+                letterSpacing: "0.11em",
+                cursor: "pointer",
+                boxShadow: "0 5px 12px rgba(45, 212, 191, 0.22)",
+                transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                minWidth: viewportWidth < 400 ? 0 : 148,
+              }}
+              onMouseEnter={(e) => {
+                const btn = e.currentTarget as HTMLButtonElement
+                btn.style.transform = "translateY(-2px) scale(1.01)"
+                btn.style.boxShadow = "0 9px 18px rgba(45, 212, 191, 0.24)"
+              }}
+              onMouseLeave={(e) => {
+                const btn = e.currentTarget as HTMLButtonElement
+                btn.style.transform = "translateY(0)"
+                btn.style.boxShadow = "0 5px 12px rgba(45, 212, 191, 0.22)"
+              }}
+            >
+              {lang === "en" ? "Open Educator" : "শিক্ষক খুলুন"}
+            </button>
           </div>
         </div>
       )}
@@ -981,13 +983,20 @@ export default function AIHelper() {
             top: 0,
             bottom: 0,
             zIndex: 9998,
-            width: sidebarWidth,
+            width: sidebarWidthStyle,
             background: isDark
-              ? "linear-gradient(to bottom, #1e293b 0%, #0f172a 100%)"
-              : "linear-gradient(to bottom, #ffffff 0%, #f8fafc 100%)",
+              ? "rgba(15, 23, 42, 0.72)"
+              : "rgba(248, 250, 252, 0.78)",
+            backdropFilter: "blur(18px)",
+            WebkitBackdropFilter: "blur(18px)",
+            borderLeft: isDark ? "1px solid rgba(148, 163, 184, 0.22)" : "1px solid rgba(148, 163, 184, 0.35)",
+            borderTopLeftRadius: isCompactLayout ? "16px" : "18px",
+            borderBottomLeftRadius: isCompactLayout ? "16px" : "18px",
+            borderTopRightRadius: isCompactLayout ? "16px" : "0",
+            borderBottomRightRadius: isCompactLayout ? "16px" : "0",
             boxShadow: isDark
-              ? "-8px 0 32px rgba(0, 0, 0, 0.5), -2px 0 8px rgba(0, 0, 0, 0.3)"
-              : "-8px 0 32px rgba(0, 0, 0, 0.15), -2px 0 8px rgba(0, 0, 0, 0.08)",
+              ? "-14px 0 48px rgba(2, 6, 23, 0.65), -6px 0 18px rgba(15, 23, 42, 0.55)"
+              : "-14px 0 48px rgba(15, 23, 42, 0.18), -6px 0 18px rgba(148, 163, 184, 0.28)",
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
@@ -1215,18 +1224,46 @@ export default function AIHelper() {
             style={{
               flex: 1,
               overflowY: "auto",
-              padding: "18px",
+              padding: isCompactLayout ? "18px 14px 16px" : "18px",
               background: isDark
-                ? "linear-gradient(to bottom, #0f172a 0%, #1e293b 100%)"
-                : "linear-gradient(to bottom, #f8fafc 0%, #f1f5f9 100%)",
+                ? "linear-gradient(170deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.75))"
+                : "linear-gradient(170deg, rgba(241, 245, 249, 0.88), rgba(226, 232, 240, 0.76))",
               display: "flex",
               flexDirection: "column",
               gap: "14px",
             }}
           >
             {context && (
-              <div className="text-xs font-medium text-center p-2 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100 rounded-lg mx-2 mb-2">
-                <span className="font-bold">Learning Context:</span> {context}
+              <div
+                style={{
+                  alignSelf: "center",
+                  padding: "8px 16px",
+                  borderRadius: "999px",
+                  background: isDark
+                    ? "linear-gradient(120deg, rgba(96, 165, 250, 0.3), rgba(96, 165, 250, 0.1))"
+                    : "linear-gradient(120deg, rgba(59, 130, 246, 0.16), rgba(96, 165, 250, 0.28))",
+                  color: isDark ? "#dbeafe" : "#1d4ed8",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  letterSpacing: "0.02em",
+                  border: isDark ? "1px solid rgba(96, 165, 250, 0.35)" : "1px solid rgba(59, 130, 246, 0.28)",
+                  backdropFilter: "blur(16px)",
+                  WebkitBackdropFilter: "blur(16px)",
+                  animation: "contextGlow 5s ease-in-out infinite",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  marginBottom: "6px",
+                  boxShadow: isDark ? "0 10px 30px rgba(14, 116, 144, 0.25)" : "0 10px 24px rgba(59, 130, 246, 0.22)",
+                }}
+              >
+                <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
+                  <circle cx={12} cy={12} r={3} />
+                  <path d="M19 12a7 7 0 0 1-7 7" />
+                  <path d="M5 12a7 7 0 0 1 7-7" />
+                </svg>
+                <span style={{ opacity: 0.85 }}>{lang === "en" ? "Learning Context" : "বর্তমান প্রসঙ্গ"}:</span>
+                <span style={{ fontWeight: 700 }}>{context}</span>
               </div>
             )}
             {messages.map((m, i) => (
@@ -1236,7 +1273,7 @@ export default function AIHelper() {
                   display: "flex",
                   justifyContent: m.role === "user" ? "flex-end" : "flex-start",
                   gap: "8px",
-                  animation: "fadeIn 0.3s ease-in forwards",
+                  animation: "fadeIn 0.25s ease-in forwards",
                 }}
               >
                 {m.role === "bot" && (
@@ -1267,26 +1304,42 @@ export default function AIHelper() {
                 )}
                 <div
                   style={{
-                    maxWidth: m.role === "user" ? "85%" : "calc(100% - 40px)",
-                    padding: "12px 16px",
-                    borderRadius: m.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+                    maxWidth: m.role === "user" ? "84%" : "calc(100% - 46px)",
+                    padding: m.role === "user" ? "13px 18px" : "14px 18px",
+                    borderRadius: m.role === "user" ? "18px 18px 8px 18px" : "18px 18px 18px 8px",
                     background: m.role === "user" 
-                      ? "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)" 
-                      : isDark ? "#1e293b" : "white",
-                    color: m.role === "user" ? "white" : isDark ? "#e2e8f0" : "#1e293b",
+                      ? "linear-gradient(140deg, #34d399, #22d3ee)"
+                      : isDark
+                        ? "linear-gradient(135deg, rgba(148, 163, 184, 0.12), rgba(100, 116, 139, 0.28))"
+                        : "linear-gradient(135deg, rgba(148, 163, 184, 0.12), rgba(148, 163, 184, 0.32))",
+                    color: m.role === "user" ? "#0f172a" : isDark ? "#e2e8f0" : "#0f172a",
                     boxShadow: m.role === "bot"
                       ? isDark
-                        ? "0 2px 8px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2)"
-                        : "0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)"
-                      : "0 1px 3px rgba(52, 199, 89, 0.1)",
-                    border: m.role === "bot" ? isDark ? "1px solid #334155" : "1px solid #e2e8f0" : "none",
-                    fontSize: "14px",
-                    lineHeight: "1.6",
+                        ? "0 16px 38px rgba(2, 6, 23, 0.55), 0 4px 12px rgba(15, 23, 42, 0.55)"
+                        : "0 16px 32px rgba(148, 163, 184, 0.25), 0 4px 12px rgba(148, 163, 184, 0.18)"
+                      : "0 12px 24px rgba(45, 212, 191, 0.35)",
+                    border: m.role === "bot" ? (isDark ? "1px solid rgba(148, 163, 184, 0.25)" : "1px solid rgba(148, 163, 184, 0.35)") : "1px solid rgba(14, 165, 233, 0.45)",
+                    fontSize: "14.2px",
+                    lineHeight: "1.7",
                     wordWrap: "break-word",
                     fontWeight: m.role === "user" ? 500 : 400,
                     fontFamily: lang === "bn" ? "'Noto Sans Bengali', 'Hind Siliguri', sans-serif" : "inherit",
+                    position: "relative",
+                    overflow: "hidden",
+                    animation: m.role === "user" ? "bubbleSwing 5s ease-in-out infinite" : "none",
                   }}
                 >
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      background: m.role === "user"
+                        ? "linear-gradient(145deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.05))"
+                        : "linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01))",
+                      opacity: 0.85,
+                      pointerEvents: "none",
+                    }}
+                  />
                   {m.role === "bot" ? (
                     <div className="markdown-content">
                       <ReactMarkdown
@@ -1401,13 +1454,17 @@ export default function AIHelper() {
           {/* Input Area */}
           <div
             style={{
-              padding: "16px",
+              padding: isCompactLayout ? "14px 14px 18px" : "16px",
               borderTop: isDark ? "1px solid #334155" : "1px solid #e2e8f0",
               display: "flex",
-              gap: "12px",
+              gap: isCompactLayout ? "10px" : "12px",
               alignItems: "flex-end",
-              background: isDark ? "#1e293b" : "white",
-              boxShadow: isDark ? "0 -4px 12px rgba(0, 0, 0, 0.3)" : "0 -4px 12px rgba(0, 0, 0, 0.04)",
+              background: isDark
+                ? "linear-gradient(140deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.85))"
+                : "linear-gradient(140deg, rgba(255, 255, 255, 0.92), rgba(248, 250, 252, 0.88))",
+              boxShadow: isDark ? "0 -12px 30px rgba(2, 6, 23, 0.55)" : "0 -12px 24px rgba(148, 163, 184, 0.18)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
             }}
           >
             {/* Microphone Button */}
@@ -1468,7 +1525,7 @@ export default function AIHelper() {
               disabled={speechToSpeechMode}
               style={{
                 flex: 1,
-                padding: "12px 16px",
+                padding: isCompactLayout ? "12px 14px" : "12px 16px",
                 borderRadius: "10px",
                 border: isDark ? "1.5px solid #334155" : "1.5px solid #e2e8f0",
                 outline: "none",
@@ -1504,7 +1561,7 @@ export default function AIHelper() {
               }}
               disabled={speechToSpeechMode}
               style={{
-                padding: "12px 18px",
+                padding: isCompactLayout ? "12px 14px" : "12px 18px",
                 borderRadius: "10px",
                 border: "none",
                 background: speechToSpeechMode 
@@ -1572,7 +1629,7 @@ export default function AIHelper() {
             position: "fixed",
             left: 0,
             top: 0,
-            right: sidebarWidth,
+            right: isCompactLayout ? 0 : sidebarWidthStyle,
             bottom: 0,
             zIndex: 9997,
             background: isDark ? "rgba(0, 0, 0, 0.5)" : "rgba(0, 0, 0, 0.12)",
