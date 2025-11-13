@@ -76,6 +76,20 @@ export default function AIHelper() {
         "শিখতে প্রস্তুত?"
       ];
 
+  const quickSuggestions = lang === "en" 
+    ? [
+        "Explain me this concept",
+        "What is this?",
+        "How does this work?",
+        "Show me examples of this",
+      ]
+    : [
+        "এই কনপেট ব্যাখ্যা করুন",
+        "এই কিভাবে কাজ করে?",
+        "এই কেন্দ্রে কিভাবে কাজ করে?",
+        "এই কেন্দ্রে কিভাবে কাজ করে?",
+      ];
+
   const recogRef = useRef<any>(null)
   const currentTranscriptRef = useRef<string>("")
   const isRestartingRef = useRef(false)
@@ -866,6 +880,10 @@ export default function AIHelper() {
     />
   )
 
+  const handleSuggestionClick = (suggestion: string) => {
+    handleSubmit(suggestion, false);
+  };
+
   // Don't render until mounted to avoid hydration mismatch
   if (!mounted) {
     return null
@@ -907,9 +925,7 @@ export default function AIHelper() {
         bottom: 0,
         zIndex: 9998,
         width: sidebarWidthStyle,
-        background: isDark
-          ? "rgba(15, 23, 42, 0.72)"
-          : "rgba(248, 250, 252, 0.78)",
+        background: isDark ? "rgba(15, 23, 42, 0.72)" : "rgba(248, 250, 252, 0.78)",
         backdropFilter: "blur(18px)",
         WebkitBackdropFilter: "blur(18px)",
         borderLeft: isDark ? "1px solid rgba(148, 163, 184, 0.22)" : "1px solid rgba(148, 163, 184, 0.35)",
@@ -925,6 +941,8 @@ export default function AIHelper() {
         overflow: "hidden",
         animation: containerAnimation,
       }
+
+  const showSuggestions = open && !inputRef.current?.value
 
   return (
     <>
@@ -990,7 +1008,9 @@ export default function AIHelper() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  boxShadow: "0 6px 12px rgba(15, 23, 42, 0.25)",
+                  flexShrink: 0,
+                  marginTop: "2px",
+                  overflow: "hidden"
                 }}
               >
                 <img
@@ -999,8 +1019,7 @@ export default function AIHelper() {
                   style={{
                     width: "100%",
                     height: "100%",
-                    objectFit: "cover",
-                    borderRadius: "50%",
+                    objectFit: "cover"
                   }}
                 />
               </div>
@@ -1675,40 +1694,96 @@ export default function AIHelper() {
               </div>
             )}
             
-            <input
-              ref={inputRef}
-              type="text"
-              placeholder={lang === "en" ? "Ask something..." : "কিছু জিজ্ঞাসা করুন..."}
-              onKeyDown={handleKeyDown}
-              disabled={speechToSpeechMode}
+            <div
               style={{
                 flex: 1,
-                padding: isCompactLayout ? "12px 14px" : "12px 16px",
-                borderRadius: "10px",
-                border: isDark ? "1.5px solid #334155" : "1.5px solid #e2e8f0",
-                outline: "none",
-                fontSize: "14px",
-                background: speechToSpeechMode 
-                  ? isDark ? "#0f172a" : "#f1f5f9" 
-                  : isDark ? "#1e293b" : "#f8fafc",
-                color: isDark ? "#e2e8f0" : "#1e293b",
-                fontWeight: 500,
-                opacity: speechToSpeechMode ? 0.6 : 1,
-                fontFamily: lang === "bn" ? "'Noto Sans Bengali', 'Hind Siliguri', sans-serif" : "inherit",
+                display: "flex",
+                flexDirection: "column",
+                gap: "6px",
+                minWidth: 0,
               }}
-              onFocus={(e) => {
-                if (!speechToSpeechMode) {
-                  ;(e.currentTarget as HTMLInputElement).style.borderColor = "#34c759"
-                  ;(e.currentTarget as HTMLInputElement).style.background = isDark ? "#0f172a" : "#ffffff"
-                  ;(e.currentTarget as HTMLInputElement).style.boxShadow = "0 0 0 3px rgba(52, 199, 89, 0.1)"
-                }
-              }}
-              onBlur={(e) => {
-                ;(e.currentTarget as HTMLInputElement).style.borderColor = isDark ? "#334155" : "#e2e8f0"
-                ;(e.currentTarget as HTMLInputElement).style.background = isDark ? "#1e293b" : "#f8fafc"
-                ;(e.currentTarget as HTMLInputElement).style.boxShadow = "none"
-              }}
-            />
+            >
+              {showSuggestions && (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                    columnGap: "4px",
+                    rowGap: "6px",
+                    marginTop: "-6px",
+                    marginBottom: "2px",
+                    marginLeft: "-4px",
+                    marginRight: "-4px",
+                    width: "calc(100% + 8px)",
+                  }}
+                >
+                  {quickSuggestions.map((suggestion, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      className="transition-colors"
+                      style={{
+                        fontSize: "11.5px",
+                        padding: "6px 14px",
+                        borderRadius: "999px",
+                        border: isDark ? "1px solid rgba(148, 163, 184, 0.28)" : "1px solid rgba(148, 163, 184, 0.45)",
+                        background: isDark ? "rgba(30, 41, 59, 0.92)" : "rgba(255, 255, 255, 0.97)",
+                        color: isDark ? "#e2e8f0" : "#1e293b",
+                        lineHeight: 1.15,
+                        cursor: "pointer",
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        width: "100%",
+                        justifySelf: "stretch",
+                        boxShadow: isDark
+                          ? "0 4px 12px rgba(15, 23, 42, 0.25)"
+                          : "0 4px 14px rgba(148, 163, 184, 0.18)",
+                        whiteSpace: "nowrap",
+                      }}
+                      title={suggestion}
+                    >
+                      {suggestion.length > 22 ? `${suggestion.substring(0, 22)}...` : suggestion}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <input
+                ref={inputRef}
+                type="text"
+                placeholder={lang === "en" ? "Ask something..." : "কিছু জিজ্ঞাসা করুন..."}
+                onKeyDown={handleKeyDown}
+                disabled={speechToSpeechMode}
+                style={{
+                  width: "100%",
+                  padding: isCompactLayout ? "12px 14px" : "12px 16px",
+                  borderRadius: "10px",
+                  border: isDark ? "1.5px solid #334155" : "1.5px solid #e2e8f0",
+                  outline: "none",
+                  fontSize: "14px",
+                  background: speechToSpeechMode 
+                    ? isDark ? "#0f172a" : "#f1f5f9" 
+                    : isDark ? "#1e293b" : "#f8fafc",
+                  color: isDark ? "#e2e8f0" : "#1e293b",
+                  fontWeight: 500,
+                  opacity: speechToSpeechMode ? 0.6 : 1,
+                  fontFamily: lang === "bn" ? "'Noto Sans Bengali', 'Hind Siliguri', sans-serif" : "inherit",
+                }}
+                onFocus={(e) => {
+                  if (!speechToSpeechMode) {
+                    ;(e.currentTarget as HTMLInputElement).style.borderColor = "#34c759"
+                    ;(e.currentTarget as HTMLInputElement).style.background = isDark ? "#0f172a" : "#ffffff"
+                    ;(e.currentTarget as HTMLInputElement).style.boxShadow = "0 0 0 3px rgba(52, 199, 89, 0.1)"
+                  }
+                }}
+                onBlur={(e) => {
+                  ;(e.currentTarget as HTMLInputElement).style.borderColor = isDark ? "#334155" : "#e2e8f0"
+                  ;(e.currentTarget as HTMLInputElement).style.background = isDark ? "#1e293b" : "#f8fafc"
+                  ;(e.currentTarget as HTMLInputElement).style.boxShadow = "none"
+                }}
+              />
+            </div>
 
             <button
               onClick={() => {
