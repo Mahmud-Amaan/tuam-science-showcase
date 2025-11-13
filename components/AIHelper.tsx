@@ -60,6 +60,11 @@ export default function AIHelper() {
   const didLoadFromStorage = useRef(false)
   const currentAudioContextRef = useRef<AudioContext | null>(null);
   const currentAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const preferredMimeTypeRef = useRef<string>("");
+  const shouldTranscribeOnStopRef = useRef<boolean>(false);
 
   const bubbleTexts = lang === "en" 
     ? [
@@ -288,54 +293,48 @@ export default function AIHelper() {
     }, 350)
   };
 
-  const stopMic = () => {
-    console.log("[Mic] Stopping microphone...");
-    if (recogRef.current) {
-      try {
-        recogRef.current.onend = null; // Prevent restart
-        recogRef.current.onerror = null;
-        recogRef.current.onresult = null;
-        recogRef.current.onstart = null;
-        recogRef.current.stop();
-      } catch (err) {
-        console.error("[Mic] Error stopping:", err);
+  const stopMic = (transcribe: boolean = false) => {
+    console.log("[Mic] Stopping recorder... transcribe=", transcribe);
+    shouldTranscribeOnStopRef.current = transcribe;
+    try {
+      const mr = mediaRecorderRef.current;
+      if (mr && mr.state !== "inactive") {
+        mr.stop();
       }
-      try {
-        recogRef.current.abort();
-      } catch (err) {
-        console.error("[Mic] Error aborting:", err);
-      }
-      recogRef.current = null;
+    } catch (err) {
+      console.error("[Mic] Error stopping recorder:", err);
     }
+    try {
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach(t => t.stop());
+        mediaStreamRef.current = null;
+      }
+    } catch (err) {
+      console.error("[Mic] Error closing stream:", err);
+    }
+
     speechModeRef.current = false;
     setSpeechToSpeechMode(false);
     setListening(false);
     isRestartingRef.current = false;
     currentTranscriptRef.current = "";
-    lastSubmittedTranscriptRef.current = ""; // Reset last submitted
-    isSubmittingRef.current = false; // Reset submission lock
     console.log("[Mic] Stopped");
   };
 
   const startMic = async () => {
-    // Disable microphone on mobile devices
+    // Disable microphone on mobile devices (kept same behavior)
     if (isMobile) {
       console.log("[Mic] Microphone disabled on mobile devices");
       return;
     }
-    
-    console.log("[Mic] Starting microphone...");
-    
-    // Store timeout reference for clearing in onstart
-    let startTimeoutRef: NodeJS.Timeout | null = null;
-    
-    // Check if we're on HTTPS or localhost (required for microphone access)
+
+    console.log("[Mic] Starting recorder...");
+
+    // Check secure context
     if (typeof window !== "undefined") {
       const protocol = window.location.protocol;
       const hostname = window.location.hostname;
       const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1";
-      
-      // Only block if it's HTTP (not secure) and not localhost
       if (protocol === "http:" && !isLocalhost) {
         alert(lang === "en"
           ? "Microphone access requires HTTPS. Please use https:// or localhost."
@@ -344,24 +343,110 @@ export default function AIHelper() {
       }
     }
 
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert(lang === "en" 
-        ? "Speech recognition is not supported in your browser. Please use Chrome, Edge, or Safari." 
-        : "আপনার ব্রাউজারে স্পিচ রিকগনিশন সমর্থিত নয়। অনুগ্রহ করে Chrome, Edge, বা Safari ব্যবহার করুন।");
-      return;
-    }
-
-    // Request microphone permission first
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // Stop the stream immediately - we just needed permission
-      stream.getTracks().forEach(track => track.stop());
-      console.log("[Mic] Microphone permission granted");
+      mediaStreamRef.current = stream;
+
+      // Pick a good mime type the browser supports
+      const candidates = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/ogg;codecs=opus",
+        "audio/mp4"
+      ];
+      let chosen = "";
+      for (const c of candidates) {
+        if ((window as any).MediaRecorder && MediaRecorder.isTypeSupported?.(c)) {
+          chosen = c; break;
+        }
+      }
+      preferredMimeTypeRef.current = chosen || "";
+
+      const mr = new MediaRecorder(stream, chosen ? { mimeType: chosen } : undefined);
+      mediaRecorderRef.current = mr;
+      recordedChunksRef.current = [];
+
+      mr.onstart = () => {
+        console.log("[Mic] Recorder started", chosen);
+        setListening(true);
+        speechModeRef.current = true;
+        setSpeechToSpeechMode(true);
+        if (!open) setOpen(true);
+      };
+
+      mr.ondataavailable = (e: BlobEvent) => {
+        if (e.data && e.data.size > 0) recordedChunksRef.current.push(e.data);
+      };
+
+      mr.onstop = async () => {
+        try {
+          const chunks = recordedChunksRef.current;
+          recordedChunksRef.current = [];
+          const type = preferredMimeTypeRef.current || "audio/webm";
+          const blob = new Blob(chunks, { type });
+          console.log("[Mic] Recorder stopped. size=", blob.size);
+
+          if (shouldTranscribeOnStopRef.current && blob.size > 0) {
+            shouldTranscribeOnStopRef.current = false;
+            const ext = type.includes("mp4") ? "mp4" : type.includes("ogg") ? "ogg" : "webm";
+            const file = new File([blob], `mic.${ext}`, { type });
+
+            // Prevent overlapping submissions
+            if (isSubmittingRef.current) return;
+            isSubmittingRef.current = true;
+
+            try {
+              const fd = new FormData();
+              fd.set("audio", file);
+              fd.set("language", lang === "bn" ? "bn" : "en");
+              const resp = await fetch("/api/transcribe", { method: "POST", body: fd });
+              if (!resp.ok) {
+                console.error("[Mic] Transcribe error status:", resp.status);
+              } else {
+                const data = await resp.json();
+                const transcript: string = (data?.text || "").toString().trim();
+                if (transcript) {
+                  if (transcript !== lastSubmittedTranscriptRef.current) {
+                    lastSubmittedTranscriptRef.current = transcript;
+                    handleSubmit(transcript, true);
+                  } else {
+                    console.log("[Mic] Duplicate transcript ignored");
+                  }
+                } else {
+                  console.log("[Mic] Empty transcription result");
+                }
+              }
+            } catch (e) {
+              console.error("[Mic] Transcription request failed", e);
+            } finally {
+              // Small delay to allow back-to-back recordings
+              setTimeout(() => { isSubmittingRef.current = false; }, 200);
+            }
+          } else {
+            shouldTranscribeOnStopRef.current = false;
+          }
+        } catch (err) {
+          console.error("[Mic] onstop error", err);
+        }
+
+        // Cleanup
+        try {
+          if (mediaStreamRef.current) {
+            mediaStreamRef.current.getTracks().forEach(t => t.stop());
+            mediaStreamRef.current = null;
+          }
+        } catch {}
+        mediaRecorderRef.current = null;
+        setListening(false);
+        speechModeRef.current = false;
+        setSpeechToSpeechMode(false);
+      };
+
+      // Start recording; capture data every second
+      mr.start(1000);
     } catch (err: any) {
-      console.error("[Mic] Permission error:", err);
-      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+      console.error("[Mic] Error starting recorder:", err);
+      if (err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError") {
         alert(lang === "en"
           ? "Microphone permission denied. Please allow microphone access and try again."
           : "মাইক্রোফোন অনুমতি অস্বীকার করা হয়েছে। অনুগ্রহ করে মাইক্রোফোন অ্যাক্সেস অনুমোদন করুন এবং আবার চেষ্টা করুন।");
@@ -370,282 +455,18 @@ export default function AIHelper() {
           ? "Could not access microphone. Please check your browser settings."
           : "মাইক্রোফোন অ্যাক্সেস করা যায়নি। অনুগ্রহ করে আপনার ব্রাউজার সেটিংস পরীক্ষা করুন।");
       }
-      return;
-    }
-
-    const recog = new SpeechRecognition();
-    recog.continuous = true;
-    recog.interimResults = true; // Enable interim results for better responsiveness
-    recog.lang = lang === "bn" ? "bn-BD" : "en-US";
-    recog.maxAlternatives = 1;
-    
-    // Set shorter timeout for faster submission
-    if ('speechRecognitionParams' in recog) {
-      (recog as any).speechRecognitionParams = { continuous: true };
-    }
-
-    // Reset transcript and duplicate tracking
-    currentTranscriptRef.current = "";
-    lastSubmittedTranscriptRef.current = "";
-    isSubmittingRef.current = false;
-
-    recog.onstart = () => {
-      console.log("[Mic] Recognition started");
-      recognitionStartedRef.current = true;
-      if (startTimeoutRef) {
-        clearTimeout(startTimeoutRef);
-        startTimeoutRef = null;
-      }
-      setListening(true);
-      isRestartingRef.current = false;
-    };
-
-    recog.onresult = (event: any) => {
-      console.log("[Mic] Result event:", event.results.length, "results, starting from index:", event.resultIndex);
-      
-      // Auto-open sidebar when speech is detected
-      if (!open) {
-        console.log("[Mic] Opening sidebar due to speech detection");
-        setOpen(true);
-      }
-      
-      // IMPORTANT: Only process NEW results starting from resultIndex
-      // This prevents processing the same results multiple times
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
-        
-        if (result.isFinal) {
-          const transcript = result[0].transcript.trim();
-          console.log("[Mic] Final transcript received:", transcript);
-          
-          if (!transcript) {
-            console.log("[Mic] Empty transcript, skipping");
-            continue;
-          }
-          
-          // Duplicate prevention: Check if this is the same as last submitted
-          if (transcript === lastSubmittedTranscriptRef.current) {
-            console.log("[Mic] Duplicate detected, skipping:", transcript);
-            continue;
-          }
-          
-          // Submission lock: Prevent multiple simultaneous submissions
-          if (isSubmittingRef.current) {
-            console.log("[Mic] Already submitting, skipping:", transcript);
-            continue;
-          }
-          
-          // All checks passed - submit the transcript
-          console.log("[Mic] ✅ Submitting transcript:", transcript);
-          isSubmittingRef.current = true;
-          lastSubmittedTranscriptRef.current = transcript;
-          
-          // Submit immediately
-          handleSubmit(transcript, true);
-          
-          // Release submission lock quickly to allow fast follow-up
-          setTimeout(() => {
-            isSubmittingRef.current = false;
-            console.log("[Mic] Submission lock released");
-          }, 300);
-          
-        } else {
-          // Log interim results for debugging
-          const interim = result[0].transcript;
-          if (interim) {
-            console.log("[Mic] Interim:", interim);
-          }
-        }
-      }
-    };
-
-    recog.onerror = (event: any) => {
-      console.error("[Mic] Recognition error:", event.error);
-      setListening(false);
-      
-      // Handle different error types
-      switch (event.error) {
-        case "no-speech":
-          // No speech detected - this is normal, just restart immediately
-          if (speechModeRef.current && !isRestartingRef.current) {
-            console.log("[Mic] No speech detected, restarting immediately...");
-            isRestartingRef.current = true;
-            setTimeout(() => {
-              if (speechModeRef.current && recogRef.current === recog) {
-                try {
-                  recog.start();
-                  isRestartingRef.current = false;
-                } catch (err) {
-                  console.error("[Mic] Error restarting after no-speech:", err);
-                  isRestartingRef.current = false;
-                  stopMic();
-                }
-              } else {
-                isRestartingRef.current = false;
-              }
-            }, 100);
-          }
-          break;
-          
-        case "audio-capture":
-          // No microphone found
-          alert(lang === "en"
-            ? "No microphone found. Please check your microphone connection."
-            : "মাইক্রোফোন পাওয়া যায়নি। অনুগ্রহ করে আপনার মাইক্রোফোন সংযোগ পরীক্ষা করুন।");
-          stopMic();
-          break;
-          
-        case "not-allowed":
-        case "service-not-allowed":
-          alert(lang === "en"
-            ? "Microphone permission denied. Please enable microphone access in your browser settings and reload the page."
-            : "মাইক্রোফোন অনুমতি অস্বীকার করা হয়েছে। অনুগ্রহ করে আপনার ব্রাউজার সেটিংসে মাইক্রোফোন অ্যাক্সেস সক্ষম করুন এবং পৃষ্ঠাটি পুনরায় লোড করুন।");
-          stopMic();
-          break;
-          
-        case "aborted":
-          // User or system aborted - don't restart
-          console.log("[Mic] Recognition aborted");
-          break;
-          
-        case "network":
-          alert(lang === "en"
-            ? "Network error. Please check your internet connection."
-            : "নেটওয়ার্ক ত্রুটি। অনুগ্রহ করে আপনার ইন্টারনেট সংযোগ পরীক্ষা করুন।");
-          stopMic();
-          break;
-          
-        default:
-          console.warn("[Mic] Unknown error:", event.error);
-          // For unknown errors, try to restart once
-          if (speechModeRef.current && !isRestartingRef.current) {
-            isRestartingRef.current = true;
-            setTimeout(() => {
-              if (speechModeRef.current && recogRef.current === recog) {
-                try {
-                  recog.start();
-                  isRestartingRef.current = false;
-                } catch (err) {
-                  console.error("[Mic] Error restarting after unknown error:", err);
-                  isRestartingRef.current = false;
-                  stopMic();
-                }
-              } else {
-                isRestartingRef.current = false;
-              }
-            }, 1000);
-          }
-      }
-    };
-
-    recog.onend = () => {
-      console.log("[Mic] Recognition ended, speechMode:", speechModeRef.current, "isRestarting:", isRestartingRef.current);
-      setListening(false);
-      
-      // Auto-restart if still in speech mode
-      if (speechModeRef.current && recogRef.current === recog && !isRestartingRef.current) {
-        console.log("[Mic] Auto-restarting in 100ms...");
-        isRestartingRef.current = true;
-        setTimeout(() => {
-          if (speechModeRef.current && recogRef.current === recog) {
-            try {
-              recog.start();
-              isRestartingRef.current = false;
-              console.log("[Mic] ✅ Successfully restarted");
-            } catch (err: any) {
-              console.error("[Mic] ❌ Error restarting recognition:", err);
-              isRestartingRef.current = false;
-              
-              if (!speechModeRef.current) {
-                console.log("[Mic] Speech mode disabled during restart, stopping");
-                return;
-              }
-              
-              // Handle "already started" error
-              if (err.message?.includes("started") || err.message?.includes("already")) {
-                console.log("[Mic] Recognition already started, resetting...");
-                stopMic();
-                setTimeout(() => {
-                  if (speechModeRef.current) {
-                    console.log("[Mic] Attempting fresh start...");
-                    startMic();
-                  }
-                }, 500);
-              } else {
-                // Try one more time with same instance
-                console.log("[Mic] Attempting retry in 500ms...");
-                setTimeout(() => {
-                  if (speechModeRef.current && recogRef.current === recog) {
-                    try {
-                      recog.start();
-                      console.log("[Mic] ✅ Retry successful");
-                    } catch (err2) {
-                      console.error("[Mic] ❌ Retry failed, full reset");
-                      stopMic();
-                      setTimeout(() => {
-                        if (speechModeRef.current) startMic();
-                      }, 500);
-                    }
-                  }
-                }, 500);
-              }
-            }
-          } else {
-            isRestartingRef.current = false;
-            console.log("[Mic] State changed during restart delay, aborting restart");
-          }
-        }, 200);
-      } else if (!speechModeRef.current) {
-        // Clean up if mode was turned off
-        console.log("[Mic] Mode turned off, cleaning up");
-        recogRef.current = null;
-      } else if (isRestartingRef.current) {
-        // Already restarting, do nothing
-        console.log("[Mic] Already restarting, skipping onend restart");
-      }
-    };
-
-    recogRef.current = recog;
-    speechModeRef.current = true;
-    setSpeechToSpeechMode(true);
-
-    try {
-      console.log("[Mic] Starting recognition...");
-      recog.start();
-    } catch (err: any) {
-      console.error("[Mic] Error starting recognition:", err);
-      setListening(false);
-      setSpeechToSpeechMode(false);
-      recogRef.current = null;
-      speechModeRef.current = false;
-      
-      // If it's a "already started" error, try stopping and restarting
-      if (err.message?.includes("started") || err.message?.includes("already")) {
-        console.log("[Mic] Recognition already started, resetting...");
-        setTimeout(() => {
-          if (speechModeRef.current) {
-            startMic();
-          }
-        }, 500);
-      } else {
-        alert(lang === "en"
-          ? "Failed to start microphone. Please try again."
-          : "মাইক্রোফোন শুরু করতে ব্যর্থ। অনুগ্রহ করে আবার চেষ্টা করুন।");
-      }
+      stopMic(false);
     }
   };
 
   const toggleSpeechToSpeech = () => {
     if (listening) {
-      stopMic();
-      // Save state to localStorage
+      stopMic(true);
       if (typeof window !== "undefined") {
         localStorage.setItem("ai_helper_mic_enabled", "false")
       }
     } else {
-      // Start mic immediately without async/await
       startMic().catch(console.error);
-      // Save state to localStorage
       if (typeof window !== "undefined") {
         localStorage.setItem("ai_helper_mic_enabled", "true")
       }
