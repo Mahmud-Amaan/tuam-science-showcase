@@ -1,11 +1,11 @@
 "use client"
 import ReactMarkdown from "react-markdown";
-import type React from "react"
-import { useEffect, useRef, useState } from "react"
+import { useTheme } from "next-themes"
+import { useState, useEffect, useRef } from "react"
+import { useLanguage } from "@/contexts/LanguageContext"
 import { useRouter, usePathname } from "next/navigation"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { useTheme } from "next-themes";
 
 declare global {
   interface Window {
@@ -14,7 +14,7 @@ declare global {
   }
 }
 
-type ChatMsg = { role: "user" | "bot"; text: string; time?: number }
+type ChatMsg = { role: "user" | "bot" | "system"; text: string; time?: number }
 type Intent = { type: "navigate" | "answer"; target?: string }
 
 function markdownToSpeech(text: string) {
@@ -40,12 +40,12 @@ export default function AIHelper() {
   const router = useRouter()
   const pathname = usePathname()
   const { theme } = useTheme()
+  const { lang } = useLanguage()
   const [mounted, setMounted] = useState(false)
   const [open, setOpen] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
   const [speechToSpeechMode, setSpeechToSpeechMode] = useState(false)
-  const [lang, setLang] = useState<"en" | "bn">("en")
   const [messages, setMessages] = useState<ChatMsg[]>([])
   const [sidebarWidth, setSidebarWidth] = useState(420)
   const [isResizing, setIsResizing] = useState(false)
@@ -53,6 +53,8 @@ export default function AIHelper() {
   const [speakerEnabled, setSpeakerEnabled] = useState(false)
   const [context, setContext] = useState<string | null>(null);
   const [viewportWidth, setViewportWidth] = useState<number>(typeof window !== "undefined" ? window.innerWidth : 1280);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const prevContextRef = useRef<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const resizeStartX = useRef(0)
@@ -122,13 +124,22 @@ export default function AIHelper() {
     return formatted;
   };
 
-  // Update context when the route changes
+  // Update context when the route changes and add system message
   useEffect(() => {
     if (pathname) {
       const formatted = formatContextFromPath(pathname);
       setContext(formatted);
+      
+      // Add system message if context changed
+      if (prevContextRef.current !== formatted && formatted) {
+        const contextMsg = lang === "en" 
+          ? `Now viewing: ${formatted}`
+          : `এখন দেখছি: ${formatted}`;
+        setMessages(m => [...m, { role: "system", text: contextMsg, time: Date.now() }]);
+      }
+      prevContextRef.current = formatted;
     }
-  }, [pathname]);
+  }, [pathname, lang]);
 
   // Track viewport width for responsive layout & motion tweaks
   useEffect(() => {
@@ -394,6 +405,7 @@ export default function AIHelper() {
             // Prevent overlapping submissions
             if (isSubmittingRef.current) return;
             isSubmittingRef.current = true;
+            setIsTranscribing(true);
 
             try {
               const fd = new FormData();
@@ -420,7 +432,10 @@ export default function AIHelper() {
               console.error("[Mic] Transcription request failed", e);
             } finally {
               // Small delay to allow back-to-back recordings
-              setTimeout(() => { isSubmittingRef.current = false; }, 200);
+              setTimeout(() => { 
+                isSubmittingRef.current = false;
+                setIsTranscribing(false);
+              }, 200);
             }
           } else {
             shouldTranscribeOnStopRef.current = false;
@@ -597,12 +612,15 @@ export default function AIHelper() {
           content: m.text
         }));
 
+        // Use current lang value from context
+        const currentLang = lang === "bn" ? "bn" : "en";
+
         const res = await fetch("/api/educator", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 
             message: text, 
-            language: lang,
+            language: currentLang,
             history: recentMessages,
             contextPath: pathname,
             speakerMode: speakerEnabled, // Auto-enable short responses when speaker is on
@@ -753,10 +771,10 @@ export default function AIHelper() {
         width: "100%",
         maxWidth: "100%",
         background: isDark
-          ? "linear-gradient(160deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9))"
-          : "linear-gradient(160deg, rgba(248, 250, 252, 0.98), rgba(226, 232, 240, 0.94))",
-        backdropFilter: "blur(18px)",
-        WebkitBackdropFilter: "blur(18px)",
+          ? "rgba(15, 23, 42, 0.98)"
+          : "rgba(248, 250, 252, 0.98)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
@@ -772,17 +790,17 @@ export default function AIHelper() {
         bottom: 0,
         zIndex: 9998,
         width: sidebarWidthStyle,
-        background: isDark ? "rgba(15, 23, 42, 0.72)" : "rgba(248, 250, 252, 0.78)",
-        backdropFilter: "blur(18px)",
-        WebkitBackdropFilter: "blur(18px)",
-        borderLeft: isDark ? "1px solid rgba(148, 163, 184, 0.22)" : "1px solid rgba(148, 163, 184, 0.35)",
-        borderTopLeftRadius: isCompactLayout ? "16px" : "18px",
-        borderBottomLeftRadius: isCompactLayout ? "16px" : "18px",
-        borderTopRightRadius: isCompactLayout ? "16px" : "0",
-        borderBottomRightRadius: isCompactLayout ? "16px" : "0",
+        background: isDark ? "rgba(15, 23, 42, 0.95)" : "rgba(248, 250, 252, 0.95)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        borderLeft: isDark ? "1px solid rgba(148, 163, 184, 0.12)" : "1px solid rgba(148, 163, 184, 0.15)",
+        borderTopLeftRadius: isCompactLayout ? "12px" : "0",
+        borderBottomLeftRadius: isCompactLayout ? "12px" : "0",
+        borderTopRightRadius: isCompactLayout ? "12px" : "0",
+        borderBottomRightRadius: isCompactLayout ? "12px" : "0",
         boxShadow: isDark
-          ? "-14px 0 48px rgba(2, 6, 23, 0.65), -6px 0 18px rgba(15, 23, 42, 0.55)"
-          : "-14px 0 48px rgba(15, 23, 42, 0.18), -6px 0 18px rgba(148, 163, 184, 0.28)",
+          ? "-4px 0 12px rgba(0, 0, 0, 0.15)"
+          : "-4px 0 12px rgba(0, 0, 0, 0.08)",
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
@@ -805,24 +823,24 @@ export default function AIHelper() {
           <div
             style={{
               width: viewportWidth < 400 ? Math.min(190, viewportWidth - 28) : 206,
-              padding: viewportWidth < 400 ? "14px 14px" : "16px 16px",
-              borderRadius: "16px",
+              padding: viewportWidth < 400 ? "12px 12px" : "14px 14px",
+              borderRadius: "14px",
               background: isDark
-                ? "linear-gradient(160deg, rgba(15, 23, 42, 0.92), rgba(30, 64, 175, 0.65))"
-                : "linear-gradient(160deg, rgba(248, 250, 252, 0.95), rgba(59, 130, 246, 0.32))",
+                ? "rgba(30, 41, 59, 0.8)"
+                : "rgba(248, 250, 252, 0.9)",
               boxShadow: isDark
-                ? "0 16px 32px rgba(2, 6, 23, 0.5), 0 5px 14px rgba(30, 64, 175, 0.32)"
-                : "0 16px 30px rgba(59, 130, 246, 0.24), 0 5px 14px rgba(148, 163, 184, 0.16)",
-              border: isDark ? "1px solid rgba(94, 234, 212, 0.24)" : "1px solid rgba(148, 163, 184, 0.28)",
-              backdropFilter: "blur(16px)",
-              WebkitBackdropFilter: "blur(16px)",
+                ? "0 8px 16px rgba(0, 0, 0, 0.2)"
+                : "0 8px 16px rgba(0, 0, 0, 0.08)",
+              border: isDark ? "1px solid rgba(148, 163, 184, 0.15)" : "1px solid rgba(148, 163, 184, 0.2)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               textAlign: "center",
-              gap: viewportWidth < 400 ? 6 : 8,
+              gap: viewportWidth < 400 ? 5 : 6,
               position: "relative",
-              paddingTop: viewportWidth < 400 ? "26px" : "28px",
+              paddingTop: viewportWidth < 400 ? "24px" : "26px",
             }}
           >
             <div
@@ -982,8 +1000,16 @@ export default function AIHelper() {
                 opacity: 1;
               }
               100% {
-                transform: scale(1.8);
+                transform: scale(1.35);
                 opacity: 0;
+              }
+            }
+            @keyframes spin {
+              from {
+                transform: rotate(0deg);
+              }
+              to {
+                transform: rotate(360deg);
               }
             }
           `}</style>
@@ -1004,33 +1030,6 @@ export default function AIHelper() {
             }}
           >
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <button
-              onClick={() => {
-                try { localStorage.setItem("ai_helper_messages_v1", JSON.stringify(messages.slice(-200))) } catch {}
-                setLang((l) => (l === "en" ? "bn" : "en"))
-              }}
-              style={{
-                padding: "8px 14px",
-                borderRadius: "8px",
-                border: isDark ? "1.5px solid #334155" : "1.5px solid #e2e8f0",
-                background: isDark ? "#1e293b" : "#ffffff",
-                cursor: "pointer",
-                fontSize: "13px",
-                fontWeight: 600,
-                transition: "all 0.2s",
-                color: "#34c759",
-              }}
-              onMouseEnter={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.background = isDark ? "#334155" : "#f1f5f9"
-                ;(e.currentTarget as HTMLButtonElement).style.borderColor = "#34c759"
-              }}
-              onMouseLeave={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.background = isDark ? "#1e293b" : "#ffffff"
-                ;(e.currentTarget as HTMLButtonElement).style.borderColor = isDark ? "#334155" : "#e2e8f0"
-              }}
-            >
-              {lang === "en" ? "বাংলা" : "EN"}
-            </button>
             <button
               onClick={() => {
                 const seed: ChatMsg = {
@@ -1264,13 +1263,13 @@ export default function AIHelper() {
             style={{
               flex: 1,
               overflowY: "auto",
-              padding: isCompactLayout ? "18px 14px 16px" : "18px",
+              padding: isCompactLayout ? "14px 12px 12px" : "14px",
               background: isDark
-                ? "linear-gradient(170deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.75))"
-                : "linear-gradient(170deg, rgba(241, 245, 249, 0.88), rgba(226, 232, 240, 0.76))",
+                ? "rgba(15, 23, 42, 0.5)"
+                : "rgba(248, 250, 252, 0.5)",
               display: "flex",
               flexDirection: "column",
-              gap: "14px",
+              gap: "10px",
             }}
           >
             {context && (
@@ -1345,28 +1344,29 @@ export default function AIHelper() {
                 <div
                   style={{
                     maxWidth: m.role === "user" ? "84%" : "calc(100% - 46px)",
-                    padding: m.role === "user" ? "13px 18px" : "14px 18px",
-                    borderRadius: m.role === "user" ? "18px 18px 8px 18px" : "18px 18px 18px 8px",
+                    padding: m.role === "user" ? "10px 14px" : "11px 14px",
+                    borderRadius: "12px",
                     background: m.role === "user" 
-                      ? "linear-gradient(140deg, #34d399, #22d3ee)"
-                      : isDark
-                        ? "linear-gradient(135deg, rgba(148, 163, 184, 0.12), rgba(100, 116, 139, 0.28))"
-                        : "linear-gradient(135deg, rgba(148, 163, 184, 0.12), rgba(148, 163, 184, 0.32))",
-                    color: m.role === "user" ? "#0f172a" : isDark ? "#e2e8f0" : "#0f172a",
-                    boxShadow: m.role === "bot"
-                      ? isDark
-                        ? "0 16px 38px rgba(2, 6, 23, 0.55), 0 4px 12px rgba(15, 23, 42, 0.55)"
-                        : "0 16px 32px rgba(148, 163, 184, 0.25), 0 4px 12px rgba(148, 163, 184, 0.18)"
-                      : "0 12px 24px rgba(45, 212, 191, 0.35)",
-                    border: m.role === "bot" ? (isDark ? "1px solid rgba(148, 163, 184, 0.25)" : "1px solid rgba(148, 163, 184, 0.35)") : "1px solid rgba(14, 165, 233, 0.45)",
-                    fontSize: "14.2px",
-                    lineHeight: "1.7",
+                      ? "#34d399"
+                      : m.role === "system"
+                        ? isDark ? "rgba(96, 165, 250, 0.15)" : "rgba(59, 130, 246, 0.12)"
+                        : isDark
+                          ? "rgba(148, 163, 184, 0.1)"
+                          : "rgba(148, 163, 184, 0.15)",
+                    color: m.role === "user" ? "#0f172a" : isDark ? "#e2e8f0" : "#1e293b",
+                    boxShadow: "none",
+                    border: m.role === "system" 
+                      ? isDark ? "1px solid rgba(96, 165, 250, 0.3)" : "1px solid rgba(59, 130, 246, 0.25)"
+                      : m.role === "bot"
+                        ? isDark ? "1px solid rgba(148, 163, 184, 0.15)" : "1px solid rgba(148, 163, 184, 0.2)"
+                        : "1px solid rgba(52, 211, 153, 0.3)",
+                    fontSize: "13.5px",
+                    lineHeight: "1.5",
                     wordWrap: "break-word",
                     fontWeight: m.role === "user" ? 500 : 400,
                     fontFamily: lang === "bn" ? "'Noto Sans Bengali', 'Hind Siliguri', sans-serif" : "inherit",
                     position: "relative",
                     overflow: "hidden",
-                    animation: m.role === "user" ? "bubbleSwing 5s ease-in-out infinite" : "none",
                   }}
                 >
                   <div
@@ -1509,7 +1509,7 @@ export default function AIHelper() {
           >
             {/* Microphone Button */}
             {!isMobile && (
-              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+              <div style={{ position: "relative", display: "flex", alignItems: "center", gap: "8px" }}>
                 <button
                   onClick={toggleSpeechToSpeech}
                   title={listening 
@@ -1532,12 +1532,28 @@ export default function AIHelper() {
                     position: "relative",
                   }}
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                    <line x1="12" y1="19" x2="12" y2="23"/>
-                    <line x1="8" y1="23" x2="16" y2="23"/>
-                  </svg>
+                  {isTranscribing ? (
+                    <div
+                      role="progressbar"
+                      aria-label={lang === "en" ? "Transcribing" : "রূপান্তর হচ্ছে"}
+                      style={{
+                        width: "22px",
+                        height: "22px",
+                        borderRadius: "50%",
+                        border: "3px solid rgba(52, 199, 89, 0.26)",
+                        borderTopColor: listening ? "#ffffff" : (isDark ? "#34c759" : "#16a34a"),
+                        animation: "spin 0.8s linear infinite",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  ) : (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                      <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                      <line x1="12" y1="19" x2="12" y2="23"/>
+                      <line x1="8" y1="23" x2="16" y2="23"/>
+                    </svg>
+                  )}
                   {listening && (
                     <div
                       style={{
@@ -1562,7 +1578,7 @@ export default function AIHelper() {
                 flex: 1,
                 display: "flex",
                 flexDirection: "column",
-                gap: "6px",
+                gap: "4px",
                 minWidth: 0,
               }}
             >

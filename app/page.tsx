@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useLanguage } from "@/contexts/LanguageContext"
 import Header from "@/components/Header"
 import HeroSection from "@/components/HeroSection"
 import Features from "@/components/Features"
@@ -9,24 +10,22 @@ import NCTB from "@/components/NCTB"
 import Footer from "@/components/Footer"
 
 export default function Home() {
-  const [language, setLanguage] = useState<"en" | "bn">("en")
+  const { lang } = useLanguage()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
     <div className="min-h-screen bg-background">
       <Header
-        language={language}
-        setLanguage={setLanguage}
         mobileMenuOpen={mobileMenuOpen}
         setMobileMenuOpen={setMobileMenuOpen}
       />
       <main id="main-content">
-        <HeroSection language={language} />
-        <Features language={language} />
-        <Benefits language={language} />
-        <NCTB language={language} />
+        <HeroSection language={lang} />
+        <Features language={lang} />
+        <Benefits language={lang} />
+        <NCTB language={lang} />
       </main>
-      <Footer language={language} />
+      <Footer language={lang} />
     </div>
   )
 }

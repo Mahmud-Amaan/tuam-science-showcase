@@ -8,6 +8,8 @@ import { CacheReset } from "@/components/CacheReset"
 import { ThemeProvider } from "@/components/theme-provider"
 import { WebVitals } from "./web-vitals"
 import RoutePrefetcher from "@/components/RoutePrefetcher"
+import { LanguageProvider } from "@/contexts/LanguageContext"
+import { HtmlLangUpdater } from "@/components/HtmlLangUpdater"
 
 // Dynamically import AIHelperPortal to reduce initial bundle size
 // Client component will be lazy loaded - no SSR needed since it's client-only
@@ -117,7 +119,9 @@ export default function RootLayout({
         />
       </head>
       <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased`}>
-        <ThemeProvider>
+        <LanguageProvider>
+          <HtmlLangUpdater />
+          <ThemeProvider>
           <CacheReset />
           {/* Skip Links for Accessibility */}
           <a
@@ -144,6 +148,7 @@ export default function RootLayout({
           <Analytics />
           <WebVitals />
         </ThemeProvider>
+        </LanguageProvider>
       </body>
     </html>
   )

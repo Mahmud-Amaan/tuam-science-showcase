@@ -2,16 +2,16 @@
 import { useEffect, useState } from "react"
 import { Globe, Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
+import { useLanguage } from "@/contexts/LanguageContext"
 
 interface HeaderProps {
-  language: "en" | "bn"
-  setLanguage: (lang: "en" | "bn") => void
   mobileMenuOpen: boolean
   setMobileMenuOpen: (open: boolean) => void
 }
 
-const Header = ({ language, setLanguage, mobileMenuOpen, setMobileMenuOpen }: HeaderProps) => {
+const Header = ({ mobileMenuOpen, setMobileMenuOpen }: HeaderProps) => {
   const { resolvedTheme, setTheme } = useTheme()
+  const { lang, toggleLanguage } = useLanguage()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -40,7 +40,7 @@ const Header = ({ language, setLanguage, mobileMenuOpen, setMobileMenuOpen }: He
             </div>
             <div>
               <h1 className="text-lg font-bold text-primary hidden sm:block">
-                {language === "en" ? "Virtual Lab" : "ভার্চুয়াল ল্যাব"}
+                {lang === "en" ? "Virtual Lab" : "ভার্চুয়াল ল্যাব"}
               </h1>
             </div>
           </div>
@@ -64,20 +64,20 @@ const Header = ({ language, setLanguage, mobileMenuOpen, setMobileMenuOpen }: He
             </button>
 
             <button
-              onClick={() => setLanguage(language === "en" ? "bn" : "en")}
+              onClick={toggleLanguage}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault()
-                  setLanguage(language === "en" ? "bn" : "en")
+                  toggleLanguage()
                 }
               }}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors text-foreground text-sm font-medium focus:outline-none focus:ring-4 focus:ring-blue-300 focus:bg-muted/90"
-              aria-label={language === "en" ? "Switch to Bengali language" : "Switch to English language"}
-              aria-pressed={language === "en"}
+              aria-label={lang === "en" ? "Switch to Bengali language" : "Switch to English language"}
+              aria-pressed={lang === "en"}
               tabIndex={0}
             >
               <Globe size={16} aria-hidden="true" />
-              <span>{language === "en" ? "বাংলা" : "English"}</span>
+              <span>{lang === "en" ? "বাংলা" : "English"}</span>
             </button>
           </div>
         </div>

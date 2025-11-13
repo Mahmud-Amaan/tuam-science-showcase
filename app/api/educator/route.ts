@@ -157,27 +157,37 @@ const fuse = new Fuse(navigationData, {
   includeScore: true,
 });
 
-const navCommands = ["go to", "open", "show", "খোলা", "যাও", "দেখাও"];
+const navCommands = ["go to", "open", "show", "খোলা", "যাও", "দেখাও", "jao", "page", "পেজ", "নিয়ে যাও"];
 
 function detectNavigationFuzzy(message: string) {
   const lower = message.toLowerCase();
 
-  // Only proceed if explicit navigation command (not short random words)
-  const isCommand = navCommands.some(cmd => lower.startsWith(cmd + " "));
-
-  if (!isCommand) return null;
-
-  // Extract potential target by removing navigation commands
+  // Check for explicit navigation commands
   let searchTerm = lower;
+  let isCommand = false;
+  
   for (const cmd of navCommands) {
-    if (lower.startsWith(cmd + " ")) {
-      searchTerm = lower.slice(cmd.length + 1).trim();
+    if (lower.includes(cmd)) {
+      isCommand = true;
+      // Extract text after the command
+      const idx = lower.indexOf(cmd);
+      searchTerm = lower.slice(idx + cmd.length).trim();
       break;
     }
   }
 
+  // If no explicit command, still try to match common page names
+  if (!isCommand) {
+    // Check if message contains any navigation keywords
+    const hasNavKeyword = navigationData.some(item => 
+      lower.includes(item.name.toLowerCase())
+    );
+    if (!hasNavKeyword) return null;
+    searchTerm = lower;
+  }
+
   const result = fuse.search(searchTerm);
-  if (result.length > 0 && result[0].score! < 0.5) {
+  if (result.length > 0 && result[0].score! < 0.6) {
     return { type: "navigate", target: result[0].item.url };
   }
 
@@ -287,8 +297,8 @@ export async function POST(req: Request) {
     const quickIntent = detectNavigationFuzzy(messageLower);
     if (quickIntent) {
       const reply = language === "bn" 
-        ? "ঠিক আছে, আপনাকে সেই পেজে নিয়ে যাচ্ছি…" 
-        : "Okay, taking you to that page…";
+        ? `ঠিক আছে, ${quickIntent.target} পৃষ্ঠায় নিয়ে যাচ্ছি…` 
+        : `Taking you to ${quickIntent.target}...`;
       return NextResponse.json({ reply, intent: quickIntent });
     }
 
@@ -307,16 +317,28 @@ export async function POST(req: Request) {
 
     const languageName = language === "bn" ? "Bangla (বাংলা)" : "English";
     const contextInfo = simulationContext ? `[Current Context: ${simulationContext}] ` : "";
+    
+    // System message that enforces language
+    const systemMessage = language === "bn" 
+      ? `আপনি একজন সহায়ক শিক্ষক। নিচের নির্দেশাবলী অনুসরণ করুন:
+- শুধুমাত্র বাংলায় উত্তর দিন
+- সহজ ও বোধগম্য ভাষায় উত্তর দিন
+- শিক্ষামূলক ও সহায়ক হোন
+- গুরুত্বপূর্ণ শব্দগুলি **গাঢ়** করে দিন
+- প্রয়োজন হলে বুলেট পয়েন্ট ব্যবহার করুন
+- উদাহরণ দিন`
+      : `You are a helpful teaching assistant. Follow these instructions:
+- Respond ONLY in English
+- Keep answers clear and concise
+- Be educational and helpful
+- Use **bold** for key terms
+- Use bullet points when needed
+- Include examples when helpful`;
+
     const prompt = `Language: ${languageName}
 ${contextInfo}User Question: ${message}
 
-Instructions:
-- Respond ONLY in ${languageName}
-- Provide helpful, educational answers suitable for students
-- Use proper Markdown formatting (bold for key terms, headings for sections, lists for multiple points)
-- Keep answers concise but informative
-- Use context from previous messages to provide relevant answers
-- Include examples when helpful` +
+${systemMessage}` +
       (speakerMode ? "\n- **Speaker Mode**: Respond with exactly 1-2 complete sentences of 40 words or fewer, no bullet points." : "");
 
     const aiStream = await callGroq(prompt, key, model, history, speakerMode);
