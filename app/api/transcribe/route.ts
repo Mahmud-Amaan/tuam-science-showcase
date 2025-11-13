@@ -21,7 +21,7 @@ export async function POST(req: Request) {
 
     const fd = new FormData();
     fd.set("file", file);
-    fd.set("model", "whisper-large-v3-turbo");
+    fd.set("model", "whisper-large-v3");
     if (language) fd.set("language", language);
     fd.set("response_format", "json");
     fd.set("temperature", "0");
