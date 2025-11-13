@@ -207,7 +207,8 @@ async function callGroq(
   prompt: string, 
   apiKey: string, 
   model: string, 
-  history: Array<{ role: string; content: string }> = []
+  history: Array<{ role: string; content: string }> = [],
+  speakerMode: boolean = false
 ) {
   try {
     const Groq = (await import("groq-sdk")).default;
@@ -234,7 +235,8 @@ async function callGroq(
           "6. **Uncertainty**: If you don't know the answer, say so and suggest resources for learning more.\n" +
           "7. **Reasoning**: Before answering, reason step-by-step to ensure accuracy. Think like a scientist!\n" +
           "8. **Engagement**: Ask follow-up questions to encourage deeper thinking when appropriate.\n" +
-          "9. **Context**: Consider the current simulation context (if provided) and the conversation history to provide relevant answers.\n",
+          "9. **Context**: Consider the current simulation context (if provided) and the conversation history to provide relevant answers.\n" +
+          (speakerMode ? "10. **Speaker Mode**: Reply in 1-3 complete sentence (40 words or fewer). No lists or points" : ""),
       },
       // Add conversation history
       ...history.map(msg => ({
@@ -249,7 +251,7 @@ async function callGroq(
       model,
       messages,
       temperature: 0.7,
-      max_completion_tokens: 2048,
+      max_completion_tokens: speakerMode ? 220 : 2048,
       top_p: 0.9,
       stream: true,
     });
@@ -267,6 +269,7 @@ export async function POST(req: Request) {
     const message: string = (body.message ?? "").toString().trim();
     const language: "en" | "bn" = body.language === "bn" ? "bn" : "en";
     const history: Array<{ role: string; content: string }> = body.history ?? [];
+    const speakerMode: boolean = body.speakerMode ?? false;
 
     if (!message) {
       const reply = language === "bn" ? "কোনও প্রশ্ন পাওয়া যায়নি।" : "No question received.";
@@ -313,9 +316,10 @@ Instructions:
 - Use proper Markdown formatting (bold for key terms, headings for sections, lists for multiple points)
 - Keep answers concise but informative
 - Use context from previous messages to provide relevant answers
-- Include examples when helpful`;
+- Include examples when helpful` +
+      (speakerMode ? "\n- **Speaker Mode**: Respond with exactly 1-3 complete sentences of 40 words or fewer, no bullet points." : "");
 
-    const aiStream = await callGroq(prompt, key, model, history);
+    const aiStream = await callGroq(prompt, key, model, history, speakerMode);
 
     // Create a streaming response
     const encoder = new TextEncoder();
