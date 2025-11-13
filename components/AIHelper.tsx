@@ -51,7 +51,6 @@ export default function AIHelper() {
   const [isResizing, setIsResizing] = useState(false)
   const [listening, setListening] = useState(false);
   const [speakerEnabled, setSpeakerEnabled] = useState(false)
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [context, setContext] = useState<string | null>(null);
   const [viewportWidth, setViewportWidth] = useState<number>(typeof window !== "undefined" ? window.innerWidth : 1280);
 
@@ -59,6 +58,8 @@ export default function AIHelper() {
   const resizeStartX = useRef(0)
   const resizeStartWidth = useRef(0)
   const didLoadFromStorage = useRef(false)
+  const currentAudioContextRef = useRef<AudioContext | null>(null);
+  const currentAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
 
   const bubbleTexts = lang === "en" 
     ? [
@@ -276,8 +277,10 @@ export default function AIHelper() {
 
     // Don't stop mic or speaker when closing sidebar - they should persist
     // Only cancel current speech utterance if one is playing
-    if (typeof window !== "undefined" && utteranceRef.current) {
-      window.speechSynthesis?.cancel()
+    if (currentAudioContextRef.current) {
+      currentAudioContextRef.current.close().catch(console.error);
+      currentAudioContextRef.current = null;
+      currentAudioSourceRef.current = null;
     }
     setTimeout(() => {
       setOpen(false)
@@ -472,9 +475,8 @@ export default function AIHelper() {
                 try {
                   recog.start();
                   isRestartingRef.current = false;
-                  console.log("[Mic] Restarted after no-speech");
                 } catch (err) {
-                  console.error("[Mic] Error restarting:", err);
+                  console.error("[Mic] Error restarting after no-speech:", err);
                   isRestartingRef.current = false;
                   stopMic();
                 }
@@ -661,7 +663,12 @@ export default function AIHelper() {
     setSpeakerEnabled((prev) => {
       const next = !prev
       if (!next) {
-        window.speechSynthesis.cancel()
+        // Cancel any ongoing speech
+        if (currentAudioContextRef.current) {
+          currentAudioContextRef.current.close().catch(console.error);
+          currentAudioContextRef.current = null;
+          currentAudioSourceRef.current = null;
+        }
         lastSpokenRef.current = null
       }
       // Save state to localStorage
@@ -670,7 +677,97 @@ export default function AIHelper() {
     })
   }
 
-  function fetchReply(text: string, onChunk?: (chunk: string) => void) {
+  const speakBotReply = (rawText: string) => {
+    if (!speakerEnabled || typeof window === "undefined") return;
+    
+    if (lastSpokenRef.current === rawText) return;
+
+    const sanitized = markdownToSpeech(rawText);
+    if (!sanitized) return;
+
+    const langCode = lang === "bn" ? "bn-BD" : "en-US";
+
+    if (speechModeRef.current) {
+      shouldResumeMicRef.current = true;
+      stopMic();
+    } else {
+      shouldResumeMicRef.current = false;
+    }
+
+    // Cancel any ongoing audio playback
+    if (currentAudioContextRef.current) {
+      currentAudioContextRef.current.close().catch(console.error);
+      currentAudioContextRef.current = null;
+    }
+    currentAudioSourceRef.current = null;
+
+    lastSpokenRef.current = rawText;
+
+    speakWithGroq(sanitized, langCode)
+      .then(() => {
+        if (shouldResumeMicRef.current) {
+          shouldResumeMicRef.current = false;
+          setTimeout(() => startMic().catch(console.error), 400);
+        }
+      })
+      .catch((error) => {
+        console.error('Groq TTS error:', error);
+        if (shouldResumeMicRef.current) {
+          shouldResumeMicRef.current = false;
+          setTimeout(() => startMic().catch(console.error), 400);
+        }
+      });
+  };
+
+  const speakWithGroq = async (text: string, langCode: string): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const response = await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, language: langCode }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`TTS API responded with status ${response.status}`);
+        }
+
+        const audioData = await response.arrayBuffer();
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        currentAudioContextRef.current = audioContext;
+
+        if (audioContext.state !== 'running') {
+          await audioContext.resume();
+        }
+
+        const audioBuffer = await audioContext.decodeAudioData(audioData);
+        const source = audioContext.createBufferSource();
+        currentAudioSourceRef.current = source;
+        source.buffer = audioBuffer;
+        source.connect(audioContext.destination);
+
+        source.onended = () => {
+          currentAudioContextRef.current = null;
+          currentAudioSourceRef.current = null;
+          resolve();
+        };
+
+        source.addEventListener('error', (error) => {
+          currentAudioContextRef.current = null;
+          currentAudioSourceRef.current = null;
+          reject(error);
+        });
+
+        source.start(0);
+      } catch (error) {
+        currentAudioContextRef.current = null;
+        currentAudioSourceRef.current = null;
+        reject(error);
+      }
+    });
+  };
+
+  const fetchReply = async (text: string, onChunk?: (chunk: string) => void) => {
     return new Promise<{ reply: string; intent?: Intent }>(async (resolve) => {
       try {
         // Send last 4 messages for context (2 exchanges) - optimized to reduce token usage
@@ -724,85 +821,6 @@ export default function AIHelper() {
         resolve({ reply: fallback });
       }
     });
-  }
-
-  const speakBotReply = (rawText: string) => {
-    if (!speakerEnabled || typeof window === "undefined") return
-    const synth = window.speechSynthesis
-    if (!synth) return
-
-    if (lastSpokenRef.current === rawText) return
-
-    const sanitized = markdownToSpeech(rawText)
-    if (!sanitized) return
-
-    if (speechModeRef.current) {
-      shouldResumeMicRef.current = true
-      stopMic()
-    } else {
-      shouldResumeMicRef.current = false
-    }
-
-    synth.cancel()
-    const utterance = new SpeechSynthesisUtterance(sanitized)
-    
-    // Set language based on current language setting
-    utterance.lang = lang === "bn" ? "bn-BD" : "en-US"
-
-    const availableVoices = voices.length ? voices : synth.getVoices()
-    const lower = (name: string) => name.toLowerCase()
-    
-    if (lang === "bn") {
-      // Bangla voice selection
-      const googleBangla = availableVoices.find((voice: SpeechSynthesisVoice) => 
-        voice.lang.startsWith("bn") && lower(voice.name).includes("google")
-      )
-      const anyBangla = availableVoices.find((voice: SpeechSynthesisVoice) => 
-        voice.lang.startsWith("bn")
-      )
-      utterance.voice = googleBangla ?? anyBangla ?? null
-    } else {
-      // English voice selection
-      const preferredNames = [
-        "google uk english male",
-        "google us english male",
-        "google english (uk) male",
-        "google english (us) male",
-      ]
-      const primaryMale = availableVoices.find((voice: SpeechSynthesisVoice) => 
-        preferredNames.includes(lower(voice.name))
-      )
-      const googleMale = availableVoices.find((voice: SpeechSynthesisVoice) => {
-        const name = lower(voice.name)
-        return voice.lang.startsWith("en") && name.includes("google") && name.includes("male")
-      })
-      const anyMale = availableVoices.find((voice: SpeechSynthesisVoice) => 
-        voice.lang.startsWith("en") && lower(voice.name).includes("male")
-      )
-      const googleAny = availableVoices.find((voice: SpeechSynthesisVoice) => 
-        voice.lang.startsWith("en") && lower(voice.name).includes("google")
-      )
-      const fallbackEnglish = availableVoices.find((voice: SpeechSynthesisVoice) => 
-        voice.lang.startsWith("en")
-      )
-      utterance.voice = primaryMale ?? googleMale ?? anyMale ?? googleAny ?? fallbackEnglish ?? null
-    }
-
-    utteranceRef.current = utterance
-    lastSpokenRef.current = rawText
-    utterance.onend = () => {
-      if (shouldResumeMicRef.current) {
-        shouldResumeMicRef.current = false
-        setTimeout(() => startMic().catch(console.error), 400)
-      }
-    }
-    utterance.onerror = () => {
-      if (shouldResumeMicRef.current) {
-        shouldResumeMicRef.current = false
-        setTimeout(() => startMic().catch(console.error), 400)
-      }
-    }
-    synth.speak(utterance)
   }
 
   const handleSubmit = async (text: string, fromMic = false) => {
@@ -1072,7 +1090,7 @@ export default function AIHelper() {
                 btn.style.boxShadow = "0 5px 12px rgba(45, 212, 191, 0.22)"
               }}
             >
-              {lang === "en" ? "Open Educator" : "শিক্ষক খুলুন"}
+              {lang === "en" ? "Open Educator" : "শিক্ষক খোলা"}
             </button>
           </div>
         </div>
@@ -1149,7 +1167,9 @@ export default function AIHelper() {
               display: "flex",
               gap: "10px",
               alignItems: "center",
-              background: isDark ? "rgba(15, 23, 42, 0.5)" : "rgba(248, 250, 252, 0.5)",
+              background: isDark
+                ? "linear-gradient(140deg, rgba(15, 23, 42, 0.5), rgba(30, 41, 59, 0.45))"
+                : "linear-gradient(140deg, rgba(255, 255, 255, 0.5), rgba(248, 250, 252, 0.45))",
               flexWrap: "wrap",
               justifyContent: "space-between",
             }}
@@ -1219,21 +1239,25 @@ export default function AIHelper() {
             </button>
             <button
               onClick={toggleSpeaker}
-              aria-label={speakerEnabled 
-                ? (lang === "en" ? "Disable speaker" : "স্পিকার বন্ধ করুন")
-                : (lang === "en" ? "Enable speaker" : "স্পিকার চালু করুন")
-              }
-              title={speakerEnabled 
-                ? (lang === "en" ? "Disable AI voice" : "AI ভয়েস বন্ধ করুন")
-                : (lang === "en" ? "Enable AI voice" : "AI ভয়েস চালু করুন")
-              }
+              aria-label={lang === "en"
+                ? (speakerEnabled ? "Disable speaker" : "Enable speaker")
+                : (speakerEnabled ? "স্পিকার বন্ধ করুন" : "স্পিকার চালু করুন")}
+              title={lang === "en"
+                ? (speakerEnabled ? "Disable speaker mode" : "Enable speaker mode")
+                : (speakerEnabled ? "স্পিকার মোড বন্ধ করুন" : "স্পিকার মোড চালু করুন")}
               style={{
                 width: 40,
                 height: 40,
                 borderRadius: "8px",
-                border: speakerEnabled ? "1.5px solid rgba(52, 199, 89, 0.8)" : isDark ? "1.5px solid #334155" : "1.5px solid #e2e8f0",
-                background: speakerEnabled ? "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)" : isDark ? "#1e293b" : "#ffffff",
-                color: speakerEnabled ? "#ffffff" : "#64748b",
+                border: speakerEnabled
+                  ? (isDark ? "1.5px solid rgba(45, 212, 191, 0.5)" : "1.5px solid rgba(16, 185, 129, 0.45)")
+                  : (isDark ? "1.5px solid #334155" : "1.5px solid #e2e8f0"),
+                background: speakerEnabled
+                  ? (isDark ? "rgba(13, 148, 136, 0.28)" : "rgba(167, 243, 208, 0.65)")
+                  : (isDark ? "#1e293b" : "#ffffff"),
+                color: speakerEnabled
+                  ? (isDark ? "#5eead4" : "#047857")
+                  : "#64748b",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
@@ -1241,28 +1265,36 @@ export default function AIHelper() {
                 transition: "all 0.2s",
               }}
               onMouseEnter={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.boxShadow = isDark ? "0 4px 12px rgba(0, 0, 0, 0.25)" : "0 4px 12px rgba(52, 199, 89, 0.25)"
+                const btn = e.currentTarget as HTMLButtonElement
+                btn.style.boxShadow = isDark
+                  ? "0 6px 16px rgba(45, 212, 191, 0.32)"
+                  : "0 6px 16px rgba(74, 222, 128, 0.22)"
+                if (!speakerEnabled) {
+                  btn.style.background = isDark ? "#27364d" : "#ecfeff"
+                }
               }}
               onMouseLeave={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.boxShadow = "none"
+                const btn = e.currentTarget as HTMLButtonElement
+                btn.style.boxShadow = "none"
+                btn.style.background = speakerEnabled
+                  ? (isDark ? "rgba(13, 148, 136, 0.28)" : "rgba(167, 243, 208, 0.65)")
+                  : (isDark ? "#1e293b" : "#ffffff")
               }}
             >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M11 5 6 9H3v6h3l5 4z" />
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                <line x1="12" y1="19" x2="12" y2="23"/>
-                <line x1="8" y1="23" x2="16" y2="23"/>
-              </svg>
-              {speakerEnabled && <path d="M19.5 12a3.5 3.5 0 0 1-3.5 3.5" />}
+              {speakerEnabled ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M11 5 6 9H3v6h3l5 4z" />
+                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                </svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M11 5 6 9H3v6h3l5 4z" />
+                  <path d="m2 2 20 20" />
+                  <path d="M6.6 18.4c-.8.8-1.8 1.2-2.8 1.2" />
+                  <path d="M9 8.6c1.2-.4 2.5-.4 3.8-.1" />
+                </svg>
+              )}
             </button>
             <button
               onClick={() => setIsFullscreen((prev) => !prev)}
@@ -1569,7 +1601,7 @@ export default function AIHelper() {
                           h3: ({children}) => (
                             <h3 style={{
                               fontSize: "1.15em",
-                              fontWeight: "600",
+                              fontWeight: 600,
                               marginTop: "0.4em",
                               marginBottom: "0.3em"
                             }}>{children}</h3>
