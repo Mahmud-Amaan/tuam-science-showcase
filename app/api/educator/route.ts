@@ -236,7 +236,7 @@ async function callGroq(
           "7. **Reasoning**: Before answering, reason step-by-step to ensure accuracy. Think like a scientist!\n" +
           "8. **Engagement**: Ask follow-up questions to encourage deeper thinking when appropriate.\n" +
           "9. **Context**: Consider the current simulation context (if provided) and the conversation history to provide relevant answers.\n" +
-          (speakerMode ? "10. **Speaker Mode**: Reply in 1-3 complete sentence (60 words or fewer). No lists or points" : ""),
+          (speakerMode ? "10. **Speaker Mode**: Reply in 1-2 complete sentence (40 words or fewer). No lists or points" : ""),
       },
       // Add conversation history
       ...history.map(msg => ({
@@ -251,7 +251,7 @@ async function callGroq(
       model,
       messages,
       temperature: 0.7,
-      max_completion_tokens: speakerMode ? 220 : 2048,
+      max_completion_tokens: speakerMode ? 180 : 2048,
       top_p: 0.9,
       stream: true,
     });
@@ -294,7 +294,7 @@ export async function POST(req: Request) {
 
     // --- Step 4b: Call AI for answers ---
     const key = process.env.GROQ_API_KEY;
-    const model = process.env.GROQ_MODEL_ID ?? "llama-3.3-70b-versatile";
+    const model = process.env.GROQ_MODEL_ID ?? "meta-llama/llama-4-scout-17b-16e-instruct";
 
     if (!key) {
       return NextResponse.json({
@@ -317,7 +317,7 @@ Instructions:
 - Keep answers concise but informative
 - Use context from previous messages to provide relevant answers
 - Include examples when helpful` +
-      (speakerMode ? "\n- **Speaker Mode**: Respond with exactly 1-3 complete sentences of 60 words or fewer, no bullet points." : "");
+      (speakerMode ? "\n- **Speaker Mode**: Respond with exactly 1-2 complete sentences of 40 words or fewer, no bullet points." : "");
 
     const aiStream = await callGroq(prompt, key, model, history, speakerMode);
 

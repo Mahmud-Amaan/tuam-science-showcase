@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Determine the voice based on language
-  let voice = 'Fritz-PlayAI';
+  let voice = process.env.GROQ_VOICE ?? 'Mitch-PlayAI';
   if (language.startsWith('bn')) {
     // Try using an Arabic voice for Bangla as a temporary solution
     voice = 'Amira-PlayAI';
