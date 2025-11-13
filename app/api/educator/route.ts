@@ -1,5 +1,30 @@
 import { NextResponse } from "next/server";
 import Fuse from "fuse.js";
+import { topics } from "@/lib/topics";
+
+const SUBJECT_LABELS: Record<string, { en: string; bn: string }> = {
+  math: { en: "Math", bn: "গণিত" },
+  physics: { en: "Physics", bn: "পদার্থবিজ্ঞান" },
+  chemistry: { en: "Chemistry", bn: "রসায়ন" },
+  biology: { en: "Biology", bn: "জীববিজ্ঞান" },
+  ict: { en: "ICT", bn: "আইসিটি" },
+};
+
+function buildLabCatalogue(language: "en" | "bn"): string {
+  const lines: string[] = [];
+
+  for (const [subjectKey, entries] of Object.entries(topics)) {
+    if (!entries?.length) continue;
+    const subjectLabel = SUBJECT_LABELS[subjectKey]?.[language] ?? subjectKey;
+    const formatted = entries
+      .map((item) => `• ${item.label} → ${item.href}`)
+      .join(language === "bn" ? "\n" : "\n");
+
+    lines.push(`${subjectLabel}:\n${formatted}`);
+  }
+
+  return lines.join("\n\n");
+}
 
 // Configure runtime (Node.js needed for streaming and Groq SDK)
 export const runtime = 'nodejs'
@@ -317,6 +342,7 @@ export async function POST(req: Request) {
 
     const languageName = language === "bn" ? "Bangla (বাংলা)" : "English";
     const contextInfo = simulationContext ? `[Current Context: ${simulationContext}] ` : "";
+    const labCatalogue = buildLabCatalogue(language);
     
     // System message that enforces language
     const systemMessage = language === "bn" 
@@ -338,7 +364,12 @@ export async function POST(req: Request) {
     const prompt = `Language: ${languageName}
 ${contextInfo}User Question: ${message}
 
-${systemMessage}` +
+${systemMessage}
+
+Available Lab Pages (only recommend from this list):
+${labCatalogue}
+
+When providing guidance, reference the relevant page using Markdown links like [Page Name](/physics/motion).` +
       (speakerMode ? "\n- **Speaker Mode**: Respond with exactly 1-2 complete sentences of 40 words or fewer, no bullet points." : "");
 
     const aiStream = await callGroq(prompt, key, model, history, speakerMode);

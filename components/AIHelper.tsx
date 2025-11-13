@@ -1,11 +1,12 @@
 "use client"
 import ReactMarkdown from "react-markdown";
 import { useTheme } from "next-themes"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { useLanguage } from "@/contexts/LanguageContext"
 import { useRouter, usePathname } from "next/navigation"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { topics } from "@/lib/topics"
 
 declare global {
   interface Window {
@@ -16,6 +17,14 @@ declare global {
 
 type ChatMsg = { role: "user" | "bot" | "system"; text: string; time?: number }
 type Intent = { type: "navigate" | "answer"; target?: string }
+
+const SUBJECT_LABELS: Record<string, { en: string; bn: string }> = {
+  math: { en: "Math", bn: "গণিত" },
+  physics: { en: "Physics", bn: "পদার্থবিজ্ঞান" },
+  chemistry: { en: "Chemistry", bn: "রসায়ন" },
+  biology: { en: "Biology", bn: "জীববিজ্ঞান" },
+  ict: { en: "ICT", bn: "আইসিটি" },
+}
 
 function markdownToSpeech(text: string) {
   return text
@@ -84,19 +93,41 @@ export default function AIHelper() {
         "শিখতে প্রস্তুত?"
       ];
 
-  const quickSuggestions = lang === "en" 
-    ? [
-        "Explain me this concept",
-        "What is this?",
-        "How does this work?",
-        "Show me examples of this",
-      ]
-    : [
-        "এই কনপেট ব্যাখ্যা করুন",
-        "এই কিভাবে কাজ করে?",
-        "এই কেন্দ্রে কিভাবে কাজ করে?",
-        "এই কেন্দ্রে কেন্দ্রিত উদাহরণ দেখান",
-      ];
+  const quickSuggestions = useMemo(() => {
+    const base = lang === "bn"
+      ? [
+          "এই ধারণাটি ব্যাখ্যা করুন",
+          "এটি কীভাবে কাজ করে?",
+          "একটি উদাহরণ দেখান",
+        ]
+      : [
+          "Explain this concept",
+          "How does this work?",
+          "Show me an example",
+        ];
+
+    const suggestionSet = new Set<string>(base);
+
+    for (const [subjectKey, entries] of Object.entries(topics)) {
+      if (!entries?.length) continue;
+
+      const subjectLabel = SUBJECT_LABELS[subjectKey]?.[lang] ?? subjectKey;
+      suggestionSet.add(
+        lang === "bn" ? `${subjectLabel} পেজটি খুলুন` : `Open the ${subjectLabel} page`
+      );
+
+      entries.slice(0, 2).forEach((entry) => {
+        suggestionSet.add(
+          lang === "bn" ? `${entry.label} সম্পর্কে বলুন` : `Tell me about ${entry.label}`
+        );
+        suggestionSet.add(
+          lang === "bn" ? `${entry.label} পেজে নিয়ে চলুন` : `Take me to ${entry.label}`
+        );
+      });
+    }
+
+    return Array.from(suggestionSet).slice(0, 12);
+  }, [lang]);
 
   const recogRef = useRef<any>(null)
   const currentTranscriptRef = useRef<string>("")
