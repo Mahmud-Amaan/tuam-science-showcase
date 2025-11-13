@@ -42,6 +42,7 @@ export default function AIHelper() {
   const { theme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [open, setOpen] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
   const [speechToSpeechMode, setSpeechToSpeechMode] = useState(false)
   const [lang, setLang] = useState<"en" | "bn">("en")
@@ -85,6 +86,7 @@ export default function AIHelper() {
   const shouldResumeMicRef = useRef(false)
   const lastSubmittedTranscriptRef = useRef<string>("") // Track last submitted text
   const isSubmittingRef = useRef(false) // Prevent simultaneous submissions
+  const previousBodyOverflowRef = useRef<string | null>(null)
 
   // Detect mobile device and iOS specifically
   const isMobile = typeof window !== "undefined" && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
@@ -118,6 +120,43 @@ export default function AIHelper() {
     window.addEventListener("resize", handleResize, { passive: true });
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const { body } = document;
+
+    if (open && isFullscreen) {
+      if (previousBodyOverflowRef.current === null) {
+        previousBodyOverflowRef.current = body.style.overflow;
+      }
+      body.style.overflow = "hidden";
+    } else if (previousBodyOverflowRef.current !== null) {
+      body.style.overflow = previousBodyOverflowRef.current;
+      previousBodyOverflowRef.current = null;
+    }
+
+    return () => {
+      if (previousBodyOverflowRef.current !== null) {
+        body.style.overflow = previousBodyOverflowRef.current;
+        previousBodyOverflowRef.current = null;
+      }
+    };
+  }, [open, isFullscreen]);
+
+  useEffect(() => {
+    if (!open || !isFullscreen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setIsFullscreen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, isFullscreen]);
 
   // Initialize component on client-side only
   useEffect(() => { 
@@ -185,7 +224,7 @@ export default function AIHelper() {
   }, [messages, open])
 
   const handleResizeStart = (e: React.MouseEvent) => {
-    if (viewportWidth < 820) return
+    if (viewportWidth < 820 || isFullscreen) return
     e.preventDefault()
     e.stopPropagation()
     setIsResizing(true)
@@ -219,6 +258,8 @@ export default function AIHelper() {
 
   const handleClose = () => {
     setIsClosing(true)
+    setIsFullscreen(false)
+
     // Don't stop mic or speaker when closing sidebar - they should persist
     // Only cancel current speech utterance if one is playing
     if (typeof window !== "undefined" && utteranceRef.current) {
@@ -284,13 +325,6 @@ export default function AIHelper() {
           : "মাইক্রোফোন অ্যাক্সেসের জন্য HTTPS প্রয়োজন। অনুগ্রহ করে https:// বা localhost ব্যবহার করুন।");
         return;
       }
-    }
-
-    // Stop any existing recognition first
-    if (recogRef.current) {
-      stopMic();
-      // Wait a bit for cleanup
-      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
     const SpeechRecognition =
@@ -843,6 +877,54 @@ export default function AIHelper() {
     ? Math.max(320, Math.min(520, viewportWidth - 24))
     : Math.min(Math.max(sidebarWidth, 380), Math.floor(Math.max(400, viewportWidth * 0.38)))
   const sidebarWidthStyle = `${panelWidth}px`
+  const containerAnimation = isFullscreen
+    ? (isClosing ? "fadeOut 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards" : "fadeIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards")
+    : (isClosing ? "slideOut 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards" : "slideIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards")
+  const containerStyle: React.CSSProperties = isFullscreen
+    ? {
+        position: "fixed",
+        inset: 0,
+        zIndex: 9998,
+        width: "100%",
+        maxWidth: "100%",
+        background: isDark
+          ? "linear-gradient(160deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9))"
+          : "linear-gradient(160deg, rgba(248, 250, 252, 0.98), rgba(226, 232, 240, 0.94))",
+        backdropFilter: "blur(18px)",
+        WebkitBackdropFilter: "blur(18px)",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        borderRadius: 0,
+        borderLeft: "none",
+        boxShadow: "none",
+        animation: containerAnimation,
+      }
+    : {
+        position: "fixed",
+        right: 0,
+        top: 0,
+        bottom: 0,
+        zIndex: 9998,
+        width: sidebarWidthStyle,
+        background: isDark
+          ? "rgba(15, 23, 42, 0.72)"
+          : "rgba(248, 250, 252, 0.78)",
+        backdropFilter: "blur(18px)",
+        WebkitBackdropFilter: "blur(18px)",
+        borderLeft: isDark ? "1px solid rgba(148, 163, 184, 0.22)" : "1px solid rgba(148, 163, 184, 0.35)",
+        borderTopLeftRadius: isCompactLayout ? "16px" : "18px",
+        borderBottomLeftRadius: isCompactLayout ? "16px" : "18px",
+        borderTopRightRadius: isCompactLayout ? "16px" : "0",
+        borderBottomRightRadius: isCompactLayout ? "16px" : "0",
+        boxShadow: isDark
+          ? "-14px 0 48px rgba(2, 6, 23, 0.65), -6px 0 18px rgba(15, 23, 42, 0.55)"
+          : "-14px 0 48px rgba(15, 23, 42, 0.18), -6px 0 18px rgba(148, 163, 184, 0.28)",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        animation: containerAnimation,
+      }
 
   return (
     <>
@@ -939,8 +1021,10 @@ export default function AIHelper() {
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
+                setIsFullscreen(viewportWidth < 820)
                 setOpen(true)
               }}
+
               style={{
                 marginTop: viewportWidth < 400 ? 2 : 3,
                 padding: viewportWidth < 400 ? "6px 14px" : "7.5px 20px",
@@ -977,31 +1061,7 @@ export default function AIHelper() {
 
       {open && (
         <div
-          style={{
-            position: "fixed",
-            right: 0,
-            top: 0,
-            bottom: 0,
-            zIndex: 9998,
-            width: sidebarWidthStyle,
-            background: isDark
-              ? "rgba(15, 23, 42, 0.72)"
-              : "rgba(248, 250, 252, 0.78)",
-            backdropFilter: "blur(18px)",
-            WebkitBackdropFilter: "blur(18px)",
-            borderLeft: isDark ? "1px solid rgba(148, 163, 184, 0.22)" : "1px solid rgba(148, 163, 184, 0.35)",
-            borderTopLeftRadius: isCompactLayout ? "16px" : "18px",
-            borderBottomLeftRadius: isCompactLayout ? "16px" : "18px",
-            borderTopRightRadius: isCompactLayout ? "16px" : "0",
-            borderBottomRightRadius: isCompactLayout ? "16px" : "0",
-            boxShadow: isDark
-              ? "-14px 0 48px rgba(2, 6, 23, 0.65), -6px 0 18px rgba(15, 23, 42, 0.55)"
-              : "-14px 0 48px rgba(15, 23, 42, 0.18), -6px 0 18px rgba(148, 163, 184, 0.28)",
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
-            animation: isClosing ? "slideOut 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards" : "slideIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards",
-          }}
+          style={containerStyle}
         >
           <style>{`
             @keyframes slideOut {
@@ -1030,6 +1090,16 @@ export default function AIHelper() {
               }
               to {
                 opacity: 1;
+              }
+            }
+            @keyframes fadeOut {
+              from {
+                opacity: 1;
+                transform: scale(1);
+              }
+              to {
+                opacity: 0;
+                transform: scale(0.98);
               }
             }
             @keyframes pulse {
@@ -1174,6 +1244,94 @@ export default function AIHelper() {
                 <line x1="8" y1="23" x2="16" y2="23"/>
               </svg>
               {speakerEnabled && <path d="M19.5 12a3.5 3.5 0 0 1-3.5 3.5" />}
+            </button>
+            <button
+              onClick={() => setIsFullscreen((prev) => !prev)}
+              aria-label={isFullscreen
+                ? (lang === "en" ? "Exit fullscreen" : "পূর্ণস্ক্রিন বন্ধ করুন")
+                : (lang === "en" ? "Enter fullscreen" : "পূর্ণস্ক্রিন চালু করুন")
+              }
+              title={isFullscreen
+                ? (lang === "en" ? "Exit fullscreen" : "পূর্ণস্ক্রিন বন্ধ করুন")
+                : (lang === "en" ? "Go fullscreen" : "পূর্ণস্ক্রিন চালু করুন")
+              }
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: "8px",
+                border: isFullscreen
+                  ? (isDark ? "1.5px solid rgba(59, 130, 246, 0.45)" : "1.5px solid rgba(37, 99, 235, 0.4)")
+                  : (isDark ? "1.5px solid #334155" : "1.5px solid #e2e8f0"),
+                background: isFullscreen
+                  ? (isDark ? "rgba(30, 64, 175, 0.3)" : "rgba(191, 219, 254, 0.65)")
+                  : (isDark ? "#1e293b" : "#ffffff"),
+                color: isFullscreen
+                  ? (isDark ? "#60a5fa" : "#1d4ed8")
+                  : "#64748b",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                const btn = e.currentTarget as HTMLButtonElement
+                btn.style.boxShadow = isDark
+                  ? "0 6px 16px rgba(37, 99, 235, 0.35)"
+                  : "0 6px 16px rgba(59, 130, 246, 0.25)"
+                if (!isFullscreen) {
+                  btn.style.background = isDark ? "#27364d" : "#ecfeff"
+                }
+              }}
+              onMouseLeave={(e) => {
+                const btn = e.currentTarget as HTMLButtonElement
+                btn.style.boxShadow = "none"
+                btn.style.background = isFullscreen
+                  ? (isDark ? "rgba(30, 64, 175, 0.3)" : "rgba(191, 219, 254, 0.65)")
+                  : (isDark ? "#1e293b" : "#ffffff")
+              }}
+            >
+              {isFullscreen ? (
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="9 5 5 5 5 9" />
+                  <polyline points="15 19 19 19 19 15" />
+                  <line x1="5" y1="5" x2="10" y2="10" />
+                  <line x1="19" y1="19" x2="14" y2="14" />
+                  <polyline points="19 9 19 5 15 5" />
+                  <line x1="19" y1="5" x2="14" y2="10" />
+                  <polyline points="5 15 5 19 9 19" />
+                  <line x1="5" y1="19" x2="10" y2="14" />
+                </svg>
+              ) : (
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="9 3 3 3 3 9" />
+                  <line x1="3" y1="3" x2="10" y2="10" />
+                  <polyline points="15 21 21 21 21 15" />
+                  <line x1="21" y1="21" x2="14" y2="14" />
+                  <polyline points="21 9 21 3 15 3" />
+                  <line x1="21" y1="3" x2="14" y2="10" />
+                  <polyline points="3 15 3 21 9 21" />
+                  <line x1="3" y1="21" x2="10" y2="14" />
+                </svg>
+              )}
             </button>
             </div>
             <button
@@ -1593,36 +1751,38 @@ export default function AIHelper() {
           </div>
 
           {/* Resize handle */}
-          <div
-            onMouseDown={handleResizeStart}
-            style={{
-              position: "absolute",
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: "6px",
-              cursor: "col-resize",
-              background: isResizing ? "#34c759" : "transparent",
-              transition: "background 0.2s",
-              zIndex: 10000,
-              userSelect: "none",
-            }}
-            onMouseEnter={(e) => {
-              ;(e.currentTarget as HTMLDivElement).style.background = "#34c759"
-              ;(e.currentTarget as HTMLDivElement).style.opacity = "0.8"
-            }}
-            onMouseLeave={(e) => {
-              if (!isResizing) {
-                ;(e.currentTarget as HTMLDivElement).style.background = "transparent"
-                ;(e.currentTarget as HTMLDivElement).style.opacity = "1"
-              }
-            }}
-          />
+          {!isFullscreen && (
+            <div
+              onMouseDown={handleResizeStart}
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: "6px",
+                cursor: "col-resize",
+                background: isResizing ? "#34c759" : "transparent",
+                transition: "background 0.2s",
+                zIndex: 10000,
+                userSelect: "none",
+              }}
+              onMouseEnter={(e) => {
+                ;(e.currentTarget as HTMLDivElement).style.background = "#34c759"
+                ;(e.currentTarget as HTMLDivElement).style.opacity = "0.8"
+              }}
+              onMouseLeave={(e) => {
+                if (!isResizing) {
+                  ;(e.currentTarget as HTMLDivElement).style.background = "transparent"
+                  ;(e.currentTarget as HTMLDivElement).style.opacity = "1"
+                }
+              }}
+            />
+          )}
         </div>
       )}
 
       {/* Overlay */}
-      {open && (
+      {open && !isFullscreen && (
         <div
           onClick={handleClose}
           style={{
