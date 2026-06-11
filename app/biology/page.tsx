@@ -45,6 +45,14 @@ export default function BiologyPage() {
       icon: "❤️",
       href: "/biology/anatomy",
     },
+    {
+      titleEn: "Color Vision",
+      titleBn: "রঙ দর্শন",
+      descEn: "Explore how we perceive colors with PhET simulation",
+      descBn: "PhET সিমুলেশন দিয়ে আমরা কীভাবে রঙ দেখি তা অন্বেষণ করুন",
+      icon: "👁️",
+      href: "/biology/color-vision",
+    },
   ]
 
   return (

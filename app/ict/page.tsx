@@ -53,6 +53,14 @@ export default function IctPage() {
       icon: "🤖",
       href: "/ict/ai",
     },
+    {
+      titleEn: "Arduino Simulator",
+      titleBn: "আর্ডুইনো সিমুলেটর",
+      descEn: "Simulate and program Arduino projects online",
+      descBn: "অনলাইনে আর্ডুইনো প্রজেক্ট সিমুলেট এবং প্রোগ্রাম করুন",
+      icon: "🔌",
+      href: "/ict/arduino-simulator",
+    },
   ]
 
   return (
