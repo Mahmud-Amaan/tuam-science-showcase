@@ -7,6 +7,8 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useTheme } from "next-themes";
 import AnimatedKoji, { KojiState } from "./AnimatedKoji";
+import { motion, AnimatePresence } from "motion/react";
+
 
 
 declare global {
@@ -38,6 +40,33 @@ function markdownToSpeech(text: string) {
     .trim();
 }
 
+function splitIntoShortChunks(text: string): string[] {
+  // First, split by punctuation: . , ? ! । ; : \n
+  const parts = text.split(/(?<=[.,?!।;:—\-\n])\s+/);
+  const result: string[] = [];
+
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+
+    const words = trimmed.split(/\s+/).filter(w => w.length > 0);
+    // If the part has 10 words or fewer, keep it intact
+    if (words.length <= 10) {
+      result.push(trimmed);
+    } else {
+      // Otherwise, split it into chunks of 8 words to keep bubble text compact
+      for (let i = 0; i < words.length; i += 8) {
+        const chunk = words.slice(i, i + 8).join(" ");
+        if (chunk.trim()) {
+          result.push(chunk.trim());
+        }
+      }
+    }
+  }
+
+  return result.filter(s => s.length > 0);
+}
+
 export default function AIHelper() {
   const router = useRouter()
   const pathname = usePathname()
@@ -57,6 +86,29 @@ export default function AIHelper() {
   const [viewportWidth, setViewportWidth] = useState<number>(typeof window !== "undefined" ? window.innerWidth : 1280);
   const [isThinking, setIsThinking] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [bubbleText, setBubbleText] = useState("");
+  const [showBubble, setShowBubble] = useState(false);
+  const [sentencesArray, setSentencesArray] = useState<string[]>([]);
+  const [currentSentenceIndex, setCurrentSentenceIndex] = useState<number>(-1);
+
+  const clearSpeakingQueue = () => {
+    setSentencesArray([]);
+    setCurrentSentenceIndex(-1);
+    setIsSpeaking(false);
+    setShowBubble(false);
+    setBubbleText("");
+    prefetchedAudioRef.current = {};
+    if (currentAudioSourceRef.current) {
+      try {
+        currentAudioSourceRef.current.stop();
+      } catch {}
+      currentAudioSourceRef.current = null;
+    }
+    if (currentAudioContextRef.current) {
+      currentAudioContextRef.current.close().catch(console.error);
+      currentAudioContextRef.current = null;
+    }
+  };
 
   const kojiState: KojiState = listening
     ? "listening"
@@ -73,6 +125,7 @@ export default function AIHelper() {
   const didLoadFromStorage = useRef(false)
   const currentAudioContextRef = useRef<AudioContext | null>(null);
   const currentAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const prefetchedAudioRef = useRef<{ [text: string]: AudioBuffer }>({});
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
@@ -259,6 +312,104 @@ export default function AIHelper() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Sync bubble text and visibility based on thinking, streaming, and sentence playback queue
+  useEffect(() => {
+    if (isThinking) {
+      setBubbleText(lang === "en" ? "Thinking..." : "চিন্তা করছি...");
+      setShowBubble(true);
+      return;
+    }
+
+    // 1. If currently playing through the sentence queue:
+    if (currentSentenceIndex >= 0 && currentSentenceIndex < sentencesArray.length) {
+      setBubbleText(sentencesArray[currentSentenceIndex]);
+      setShowBubble(true);
+      return;
+    }
+
+    // 2. If streaming is active (last message is bot and we haven't started playing sentences yet):
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg && lastMsg.role === "bot" && lastMsg.text !== "" && currentSentenceIndex === -1) {
+      const cleanText = markdownToSpeech(lastMsg.text);
+      const chunks = splitIntoShortChunks(cleanText);
+      const latestChunk = chunks[chunks.length - 1] || "";
+      setBubbleText(latestChunk);
+      setShowBubble(true);
+      return;
+    }
+
+    // 3. Queue finished or inactive: Hide instantly
+    setShowBubble(false);
+    setBubbleText("");
+  }, [isThinking, currentSentenceIndex, sentencesArray, messages, lang]);
+
+  // Sentence-by-sentence playback queue
+  useEffect(() => {
+    if (sentencesArray.length === 0) return;
+
+    if (currentSentenceIndex < 0 || currentSentenceIndex >= sentencesArray.length) {
+      setIsSpeaking(false);
+      setSentencesArray([]);
+      setCurrentSentenceIndex(-1);
+      setShowBubble(false);
+      setBubbleText("");
+      // Queue finished! Resume microphone if voice mode was active
+      if (shouldResumeMicRef.current) {
+        shouldResumeMicRef.current = false;
+        setTimeout(() => startMic().catch(console.error), 400);
+      }
+      return;
+    }
+
+    let active = true;
+    let timer: any;
+
+    const playCurrentSentence = async () => {
+      const activeText = sentencesArray[currentSentenceIndex];
+      if (!activeText) return;
+
+      const langCode = lang === "bn" ? "bn-BD" : "en-US";
+
+      // Pre-fetch the next sentence immediately in the background
+      if (currentSentenceIndex + 1 < sentencesArray.length) {
+        prefetchNextSentence(currentSentenceIndex + 1, langCode).catch(console.error);
+      }
+
+      if (speakerEnabled) {
+        setIsSpeaking(true);
+        try {
+          await speakWithGroq(activeText, langCode);
+          if (active) {
+            setCurrentSentenceIndex(prev => prev + 1);
+          }
+        } catch (error) {
+          console.error("Error playing sentence:", error);
+          if (active) {
+            timer = setTimeout(() => {
+              setCurrentSentenceIndex(prev => prev + 1);
+            }, 3000);
+          }
+        }
+      } else {
+        // Speaker is disabled, cycle visually based on character reading speed
+        const readingTime = Math.max(2500, activeText.length * 55 + 1000);
+        timer = setTimeout(() => {
+          if (active) {
+            setCurrentSentenceIndex(prev => prev + 1);
+          }
+        }, readingTime);
+      }
+    };
+
+    playCurrentSentence();
+
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, [currentSentenceIndex, sentencesArray, speakerEnabled, lang]);
+
+
   useEffect(() => {
     if (typeof document === "undefined") return;
 
@@ -400,12 +551,7 @@ export default function AIHelper() {
 
     // Don't stop mic or speaker when closing sidebar - they should persist
     // Only cancel current speech utterance if one is playing
-    if (currentAudioContextRef.current) {
-      currentAudioContextRef.current.close().catch(console.error);
-      currentAudioContextRef.current = null;
-      currentAudioSourceRef.current = null;
-      setIsSpeaking(false);
-    }
+    clearSpeakingQueue();
     setTimeout(() => {
       setOpen(false)
       setIsClosing(false)
@@ -490,7 +636,6 @@ export default function AIHelper() {
         setListening(true);
         speechModeRef.current = true;
         setSpeechToSpeechMode(true);
-        if (!open) setOpen(true);
       };
 
       mr.ondataavailable = (e: BlobEvent) => {
@@ -604,12 +749,7 @@ export default function AIHelper() {
       const next = !prev
       if (!next) {
         // Cancel any ongoing speech
-        if (currentAudioContextRef.current) {
-          currentAudioContextRef.current.close().catch(console.error);
-          currentAudioContextRef.current = null;
-          currentAudioSourceRef.current = null;
-          setIsSpeaking(false);
-        }
+        clearSpeakingQueue();
         lastSpokenRef.current = null
       }
       // Save state to localStorage
@@ -618,15 +758,25 @@ export default function AIHelper() {
     })
   }
 
-  const speakBotReply = (rawText: string) => {
-    if (!speakerEnabled || typeof window === "undefined") return;
-    
+  const playBotResponse = (rawText: string) => {
+    if (typeof window === "undefined") return;
+
     if (lastSpokenRef.current === rawText) return;
+    lastSpokenRef.current = rawText;
 
     const sanitized = markdownToSpeech(rawText);
-    if (!sanitized) return;
+    if (!sanitized) {
+      clearSpeakingQueue();
+      return;
+    }
 
-    const langCode = lang === "bn" ? "bn-BD" : "en-US";
+    // Split text into short clause/phrase chunks for quick dynamic sync
+    const splitSentences = splitIntoShortChunks(sanitized);
+
+    if (splitSentences.length === 0) {
+      clearSpeakingQueue();
+      return;
+    }
 
     if (speechModeRef.current) {
       shouldResumeMicRef.current = true;
@@ -635,68 +785,85 @@ export default function AIHelper() {
       shouldResumeMicRef.current = false;
     }
 
-    // Cancel any ongoing audio playback
+    // Cancel ongoing audio
     if (currentAudioContextRef.current) {
       currentAudioContextRef.current.close().catch(console.error);
       currentAudioContextRef.current = null;
-      setIsSpeaking(false);
     }
     currentAudioSourceRef.current = null;
 
-    lastSpokenRef.current = rawText;
+    setSentencesArray(splitSentences);
+    setCurrentSentenceIndex(0);
+  };
 
-    speakWithGroq(sanitized, langCode)
-      .then(() => {
-        if (shouldResumeMicRef.current) {
-          shouldResumeMicRef.current = false;
-          setTimeout(() => startMic().catch(console.error), 400);
-        }
-      })
-      .catch((error) => {
-        console.error('Groq TTS error:', error);
-        if (shouldResumeMicRef.current) {
-          shouldResumeMicRef.current = false;
-          setTimeout(() => startMic().catch(console.error), 400);
-        }
+  const getAudioContext = (): AudioContext => {
+    if (!currentAudioContextRef.current) {
+      currentAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    return currentAudioContextRef.current;
+  };
+
+  const prefetchNextSentence = async (index: number, langCode: string) => {
+    if (index < 0 || index >= sentencesArray.length) return;
+    const text = sentencesArray[index];
+    if (!text || prefetchedAudioRef.current[text]) return;
+
+    try {
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, language: langCode }),
       });
+      if (!response.ok) return;
+
+      const audioData = await response.arrayBuffer();
+      const audioContext = getAudioContext();
+      const audioBuffer = await audioContext.decodeAudioData(audioData);
+      prefetchedAudioRef.current[text] = audioBuffer;
+    } catch (e) {
+      console.warn("Failed to prefetch sentence audio:", e);
+    }
   };
 
   const speakWithGroq = async (text: string, langCode: string): Promise<void> => {
     return new Promise(async (resolve, reject) => {
       try {
-        const response = await fetch('/api/tts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text, language: langCode }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`TTS API responded with status ${response.status}`);
-        }
-
-        const audioData = await response.arrayBuffer();
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        currentAudioContextRef.current = audioContext;
-
+        const audioContext = getAudioContext();
         if (audioContext.state !== 'running') {
           await audioContext.resume();
         }
 
-        const audioBuffer = await audioContext.decodeAudioData(audioData);
+        let audioBuffer: AudioBuffer;
+
+        if (prefetchedAudioRef.current[text]) {
+          audioBuffer = prefetchedAudioRef.current[text];
+        } else {
+          const response = await fetch('/api/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, language: langCode }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`TTS API responded with status ${response.status}`);
+          }
+
+          const audioData = await response.arrayBuffer();
+          audioBuffer = await audioContext.decodeAudioData(audioData);
+        }
+
         const source = audioContext.createBufferSource();
         currentAudioSourceRef.current = source;
         source.buffer = audioBuffer;
         source.connect(audioContext.destination);
 
         source.onended = () => {
-          currentAudioContextRef.current = null;
           currentAudioSourceRef.current = null;
           setIsSpeaking(false);
           resolve();
         };
 
         source.addEventListener('error', (error) => {
-          currentAudioContextRef.current = null;
           currentAudioSourceRef.current = null;
           setIsSpeaking(false);
           reject(error);
@@ -705,7 +872,6 @@ export default function AIHelper() {
         setIsSpeaking(true);
         source.start(0);
       } catch (error) {
-        currentAudioContextRef.current = null;
         currentAudioSourceRef.current = null;
         setIsSpeaking(false);
         reject(error);
@@ -774,6 +940,7 @@ export default function AIHelper() {
   const handleSubmit = async (text: string, fromMic = false) => {
     if (!text.trim()) return
     const trimmed = text.trim()
+    clearSpeakingQueue();
     setMessages(m => [...m, { role: "user", text: trimmed, time: Date.now() }])
 
     
@@ -813,7 +980,7 @@ export default function AIHelper() {
           finalReply += '...';
         }
       }
-      speakBotReply(finalReply)
+      playBotResponse(finalReply)
     } catch (e) {
       console.error("handleSubmit error", e)
       const fallback = lang === "bn"
@@ -826,7 +993,7 @@ export default function AIHelper() {
         return copy
       })
 
-      speakBotReply(fallback)
+      playBotResponse(fallback)
     } finally {
       setIsThinking(false)
     }
@@ -921,56 +1088,215 @@ export default function AIHelper() {
 
   return (
     <>
-      <button
-        onClick={(e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          if (open) {
-            handleClose();
-          } else {
-            setIsFullscreen(viewportWidth < 820)
-            setOpen(true)
-          }
-        }}
+      <div
         style={{
           position: "fixed",
           right: open ? `calc(${sidebarWidthStyle} + 20px)` : "28px",
           bottom: 28,
           zIndex: 9999,
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          outline: "none",
-          padding: 0,
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
-          transition: "right 0.35s cubic-bezier(0.19, 1, 0.22, 1), transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = "scale(1.15) translateY(-4px)"
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = "scale(1) translateY(0)"
+          gap: "10px",
+          transition: "right 0.35s cubic-bezier(0.19, 1, 0.22, 1)",
         }}
       >
-        {/* Radial Glow Backing */}
-        <div
-          style={{
-            position: "absolute",
-            width: open ? "120px" : "150px",
-            height: open ? "120px" : "150px",
-            borderRadius: "50%",
-            background: isDark
-              ? "radial-gradient(circle, rgba(34, 197, 94, 0.22) 0%, rgba(34, 197, 94, 0) 70%)"
-              : "radial-gradient(circle, rgba(34, 197, 94, 0.14) 0%, rgba(34, 197, 94, 0) 70%)",
-            filter: "blur(6px)",
-            pointerEvents: "none",
-            zIndex: -1,
+        {/* Floating Speech Bubble (Only when sidebar is closed and bot is speaking/thinking/typing) */}
+        <AnimatePresence>
+          {!open && showBubble && bubbleText.trim() !== "" && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 10 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              className="speech-bubble-scroll"
+              style={{
+                position: "absolute",
+                bottom: "100%",
+                right: "42px",
+                marginBottom: "16px",
+                width: "270px",
+                maxHeight: "160px",
+                overflowY: "auto",
+                scrollbarWidth: "none",
+                background: isDark 
+                  ? "linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95))" 
+                  : "linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.95))",
+                border: isDark ? "1.5px solid rgba(148, 163, 184, 0.22)" : "1.5px solid rgba(148, 163, 184, 0.35)",
+                borderRadius: "16px 16px 4px 16px",
+                padding: "12px 16px",
+                boxShadow: isDark 
+                  ? "0 10px 25px rgba(2, 6, 23, 0.4), 0 4px 12px rgba(2, 6, 23, 0.3)" 
+                  : "0 10px 25px rgba(148, 163, 184, 0.25), 0 4px 12px rgba(148, 163, 184, 0.15)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                color: isDark ? "#f8fafc" : "#0f172a",
+                fontSize: "14.2px",
+                lineHeight: "1.48",
+                fontWeight: 600,
+                pointerEvents: "none",
+                display: "flex",
+                flexDirection: "column",
+                gap: "4px",
+              }}
+            >
+              <style>{`
+                .speech-bubble-scroll::-webkit-scrollbar {
+                  display: none;
+                }
+              `}</style>
+              
+              {/* Little Speech Bubble Tail */}
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: "-10px",
+                  right: "24px",
+                  width: "16px",
+                  height: "10px",
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    width: "10px",
+                    height: "10px",
+                    background: isDark ? "#1f2937" : "#ffffff",
+                    borderBottom: isDark ? "1.5px solid rgba(148, 163, 184, 0.22)" : "1.5px solid rgba(148, 163, 184, 0.35)",
+                    borderRight: isDark ? "1.5px solid rgba(148, 163, 184, 0.22)" : "1.5px solid rgba(148, 163, 184, 0.35)",
+                    transform: "rotate(45deg) translate(-3px, -3px)",
+                    boxShadow: "2px 2px 4px rgba(0,0,0,0.08)",
+                  }}
+                />
+              </div>
+
+              {isThinking ? (
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", color: isDark ? "#a7f3d0" : "#059669" }}>
+                  <motion.span
+                    animate={{ opacity: [0.4, 1, 0.4] }}
+                    transition={{ duration: 1.2, repeat: Infinity }}
+                  >
+                    ●
+                  </motion.span>
+                  <span>{lang === "en" ? "Thinking..." : "চিন্তা করছি..."}</span>
+                </div>
+              ) : (
+                <div style={{ wordBreak: "break-word", whiteSpace: "normal" }}>
+                  {bubbleText}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Main Companion Button */}
+        <motion.button
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            if (open) {
+              handleClose();
+            } else {
+              setIsFullscreen(viewportWidth < 820)
+              setOpen(true)
+            }
           }}
-        />
-        <AnimatedKoji state={kojiState} size={open ? 98 : 124} />
-      </button>
+          whileHover={{
+            scale: 1.15,
+            y: -6,
+            rotate: [0, -8, 8, 0],
+            transition: {
+              rotate: { duration: 0.5, ease: "easeInOut" },
+              scale: { type: "spring", stiffness: 400, damping: 15 },
+              y: { type: "spring", stiffness: 400, damping: 15 }
+            }
+          }}
+          whileTap={{ scale: 0.92 }}
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            outline: "none",
+            padding: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+          }}
+        >
+          {/* Radial Glow Backing */}
+          <div
+            style={{
+              position: "absolute",
+              width: open ? "120px" : "150px",
+              height: open ? "120px" : "150px",
+              borderRadius: "50%",
+              background: isDark
+                ? "radial-gradient(circle, rgba(34, 197, 94, 0.22) 0%, rgba(34, 197, 94, 0) 70%)"
+                : "radial-gradient(circle, rgba(34, 197, 94, 0.14) 0%, rgba(34, 197, 94, 0) 70%)",
+              filter: "blur(6px)",
+              pointerEvents: "none",
+              zIndex: -1,
+            }}
+          />
+          <AnimatedKoji state={kojiState} size={open ? 98 : 124} />
+        </motion.button>
+
+        {/* Quick Voice/Mic Toggle Button - POSITIONED RIGHT */}
+        {!isMobile && (
+          <motion.button
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              if (!speakerEnabled) {
+                setSpeakerEnabled(true)
+                localStorage.setItem("ai_helper_speaker_enabled", "true")
+                startMic().catch(console.error)
+                localStorage.setItem("ai_helper_mic_enabled", "true")
+              } else {
+                if (listening) {
+                  stopMic(true)
+                  localStorage.setItem("ai_helper_mic_enabled", "false")
+                } else {
+                  startMic().catch(console.error)
+                  localStorage.setItem("ai_helper_mic_enabled", "true")
+                }
+              }
+            }}
+            whileHover={{ scale: 1.18, x: 2 }}
+            whileTap={{ scale: 0.9 }}
+            style={{
+              width: "36px",
+              height: "36px",
+              borderRadius: "50%",
+              border: "2px solid",
+              borderColor: listening ? "#22d3ee" : speakerEnabled ? "#3b82f6" : "#475569",
+              background: listening ? "#22d3ee" : isDark ? "#1e293b" : "#ffffff",
+              color: listening ? "#0f172a" : isDark ? "#e2e8f0" : "#64748b",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: listening 
+                ? "0 0 16px rgba(34, 211, 238, 0.75), 0 4px 10px rgba(0, 0, 0, 0.2)" 
+                : speakerEnabled
+                  ? "0 0 12px rgba(59, 130, 246, 0.45), 0 2px 6px rgba(0, 0, 0, 0.15)"
+                  : "0 2px 6px rgba(0, 0, 0, 0.15)",
+              zIndex: 10005,
+              transition: "border-color 0.25s, background 0.25s, color 0.25s, box-shadow 0.25s",
+            }}
+            title={listening 
+              ? (lang === "en" ? "Mute Microphone" : "মাইক্রোফোন বন্ধ করুন") 
+              : (lang === "en" ? "Activate Voice Mode" : "ভয়েস মোড চালু করুন")
+            }
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+            </svg>
+          </motion.button>
+        )}
+      </div>
 
       {open && (
         <div
@@ -1080,6 +1406,7 @@ export default function AIHelper() {
             </button>
             <button
               onClick={() => {
+                clearSpeakingQueue();
                 const seed: ChatMsg = {
                   role: "bot",
                   text:

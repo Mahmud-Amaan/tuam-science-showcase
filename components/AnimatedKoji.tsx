@@ -15,6 +15,31 @@ type IdleSubState = "standard" | "wave" | "yawn" | "scan"
 
 export default function AnimatedKoji({ state, size = 64, className = "" }: AnimatedKojiProps) {
   const [idleSubState, setIdleSubState] = useState<IdleSubState>("standard")
+  const [mouseOffset, setMouseOffset] = useState({ x: 0, y: 0 })
+
+  // Mouse tracking for eye pupil positioning
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      // Get viewport width and height
+      const w = window.innerWidth
+      const h = window.innerHeight
+      
+      // Calculate normalized position relative to center (-1 to 1)
+      const dx = (e.clientX - w / 2) / (w / 2)
+      const dy = (e.clientY - h / 2) / (h / 2)
+
+      // Limit pupil drift offset (max 3px in X, 2px in Y)
+      setMouseOffset({
+        x: dx * 3,
+        y: dy * 2.5
+      })
+    }
+
+    window.addEventListener("mousemove", handleMouseMove, { passive: true })
+    return () => window.removeEventListener("mousemove", handleMouseMove)
+  }, [])
 
   // Periodic Idle micro-expressions cycle
   useEffect(() => {
@@ -39,37 +64,57 @@ export default function AnimatedKoji({ state, size = 64, className = "" }: Anima
     return () => clearInterval(interval)
   }, [state])
 
-  // Common bobbing animation configuration
-  const bobbingTransition = {
-    y: {
-      duration: 3,
-      repeat: Infinity,
-      repeatType: "mirror" as const,
-      ease: "easeInOut" as const,
-    },
-    rotate: {
-      duration: 2.5,
-      repeat: Infinity,
-      repeatType: "mirror" as const,
-      ease: "easeInOut" as const,
-    }
+  // Advanced organic levitation/bobbing coordinates (combining X, Y, and Z-tilt drift)
+  const driftAnimation = {
+    y: [0, -8, 2, -10, 0],
+    x: [0, 3, -3, 2, 0],
+    rotate: [0, -2.5, 2.5, -1, 0]
   }
 
-  // State-specific body physics
+  const driftTransition = {
+    duration: 6,
+    repeat: Infinity,
+    ease: "easeInOut" as const,
+  }
+
+  // State-specific body animations (bounces, scale, speed overrides)
   const getBodyMotion = () => {
     if (state === "listening") {
-      return { y: [0, -5, 0], scale: [1, 1.03, 1] }
+      return {
+        y: [0, -5, 0],
+        x: [0, 2, -2, 0],
+        scale: [1, 1.03, 1],
+        rotate: [-1, 1, -1]
+      }
     }
     if (state === "thinking") {
-      return { y: [0, -3, 0], rotate: [-2, 2, -2] }
+      return {
+        y: [0, -3, 0],
+        x: [0, 0, 0],
+        rotate: [-3, 3, -3]
+      }
     }
     if (state === "speaking") {
-      return { y: [0, -10, 0], scale: [1, 1.05, 1] }
+      return {
+        y: [0, -12, 1, -12, 0],
+        scale: [1, 1.06, 0.98, 1.06, 1],
+        rotate: [-2, 2, -2]
+      }
     }
-    if (idleSubState === "wave") {
-      return { y: [0, -7, 0], rotate: [-5, 5, -5] }
+    return driftAnimation
+  }
+
+  const getBodyTransition = () => {
+    if (state === "listening") {
+      return { duration: 2.2, repeat: Infinity, ease: "easeInOut" as const }
     }
-    return { y: [0, -6, 0] }
+    if (state === "thinking") {
+      return { duration: 1.5, repeat: Infinity, ease: "easeInOut" as const }
+    }
+    if (state === "speaking") {
+      return { duration: 1.8, repeat: Infinity, ease: "easeInOut" as const }
+    }
+    return driftTransition
   }
 
   return (
@@ -77,7 +122,7 @@ export default function AnimatedKoji({ state, size = 64, className = "" }: Anima
       className={`relative select-none ${className}`}
       style={{ width: size, height: size }}
       animate={getBodyMotion()}
-      transition={bobbingTransition}
+      transition={getBodyTransition()}
     >
       <svg
         viewBox="0 0 100 100"
@@ -209,7 +254,7 @@ export default function AnimatedKoji({ state, size = 64, className = "" }: Anima
           filter="url(#glow)"
         />
 
-        {/* Conical Holographic Projection Light Beam */}
+        {/* Conical Holographic Projection Light Beam (Flickering effect) */}
         <motion.polygon
           points="44,75 56,75 72,89 28,89"
           fill={
@@ -222,10 +267,12 @@ export default function AnimatedKoji({ state, size = 64, className = "" }: Anima
               : "url(#idleBeam)"
           }
           animate={{
-            opacity: state !== "idle" ? [0.3, 0.65, 0.3] : [0.2, 0.45, 0.2],
+            opacity: state !== "idle" 
+              ? [0.25, 0.65, 0.35, 0.58, 0.25] 
+              : [0.12, 0.42, 0.22, 0.35, 0.12],
           }}
           transition={{
-            duration: 1.5,
+            duration: 2.2,
             repeat: Infinity,
             ease: "easeInOut",
           }}
@@ -419,10 +466,10 @@ export default function AnimatedKoji({ state, size = 64, className = "" }: Anima
         {/* State Interactive Graphics */}
         {state === "idle" && (
           <>
-            {/* Left Eye */}
+            {/* Left Eye (with cursor tracking offset) */}
             <motion.ellipse
-              cx="40"
-              cy="48"
+              cx={40 + mouseOffset.x}
+              cy={48 + mouseOffset.y}
               rx="6"
               ry={idleSubState === "yawn" ? 2.5 : 6}
               fill={idleSubState === "scan" ? "#22c55e" : "#4ade80"}
@@ -437,10 +484,10 @@ export default function AnimatedKoji({ state, size = 64, className = "" }: Anima
                 repeatDelay: idleSubState === "wave" ? 0.3 : 2.5,
               }}
             />
-            {/* Right Eye */}
+            {/* Right Eye (with cursor tracking offset) */}
             <motion.ellipse
-              cx="60"
-              cy="48"
+              cx={60 + mouseOffset.x}
+              cy={48 + mouseOffset.y}
               rx="6"
               ry={idleSubState === "yawn" ? 2.5 : idleSubState === "wave" ? 1.5 : 6}
               fill={idleSubState === "scan" ? "#22c55e" : "#4ade80"}

@@ -344,6 +344,8 @@ function findSimulationGuide(path: string) {
   const normalized = path.split('?')[0].replace(/^\/|\/$/g, "");
   const searchKey = "/" + normalized;
   
+  if (searchKey === "/") return null;
+  
   if (simulationGuides[searchKey]) {
     return simulationGuides[searchKey];
   }

@@ -15,6 +15,10 @@ const AIHelperPortal = dynamic(() => import("@/components/AIHelperPortal"), {
   loading: () => null,
 })
 
+const QuizHelperPortal = dynamic(() => import("@/components/QuizHelperPortal"), {
+  loading: () => null,
+})
+
 const geist = Geist({
   subsets: ["latin"],
   variable: "--font-sans",
@@ -140,6 +144,7 @@ export default function RootLayout({
           </a>
           {children}
           <AIHelperPortal />
+          <QuizHelperPortal />
           <RoutePrefetcher />
           <Analytics />
           <WebVitals />
