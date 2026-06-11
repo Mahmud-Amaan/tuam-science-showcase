@@ -12,11 +12,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '/biology',
     '/math',
     '/ict',
+    '/achievements',
   ].map((route) => ({
     url: `${baseUrl}${route}`,
     lastModified: currentDate,
     changeFrequency: 'weekly' as const,
-    priority: route === '' ? 1.0 : 0.9,
+    priority: route === '' ? 1.0 : route === '/achievements' ? 0.85 : 0.9,
   }))
 
   // Subject pages

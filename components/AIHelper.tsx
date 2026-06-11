@@ -82,19 +82,124 @@ export default function AIHelper() {
         "শিখতে প্রস্তুত?"
       ];
 
-  const quickSuggestions = lang === "en" 
-    ? [
-        "Explain me this concept",
-        "What is this?",
-        "How does this work?",
-        "Show me examples of this",
-      ]
-    : [
-        "এই কনপেট ব্যাখ্যা করুন",
-        "এই কিভাবে কাজ করে?",
-        "এই কেন্দ্রে কিভাবে কাজ করে?",
-        "এই কেন্দ্রে কেন্দ্রিত উদাহরণ দেখান",
-      ];
+  const getContextualSuggestions = (path: string, currentLang: "en" | "bn") => {
+    const defaultEn = [
+      "Explain this concept 💡",
+      "How does this work? ⚙️",
+      "Give me an analogy 🍎",
+      "Take a quick quiz! 📝"
+    ];
+    const defaultBn = [
+      "এই ধারণাটি ব্যাখ্যা কর 💡",
+      "এটি কীভাবে কাজ করে? ⚙️",
+      "বাস্তব উদাহরণ দিন 🍎",
+      "একটি কুইজ খেলুন! 📝"
+    ];
+
+    if (!path) return currentLang === "en" ? defaultEn : defaultBn;
+
+    const normalized = path.split('?')[0].replace(/^\/|\/$/g, "");
+
+    if (normalized.includes("physics/motion")) {
+      return currentLang === "en" 
+        ? ["Take a motion quiz 📝", "Explain kinematics formulas 📐", "Acceleration analogy 🚀", "How to use this simulation? ℹ️"]
+        : ["গতির কুইজ খেলুন 📝", "গতিবিদ্যার সূত্র ব্যাখ্যা কর 📐", "ত্বরণের বাস্তব উদাহরণ 🚀", "সিমুলেশন ব্যবহারের নিয়ম ℹ️"];
+    }
+    if (normalized.includes("physics/gravity")) {
+      return currentLang === "en" 
+        ? ["Gravity quiz 📝", "Newton's gravity formula 🍏", "What is G vs g? 🌍", "Double the distance effect? 🛰️"]
+        : ["মহাকর্ষ কুইজ খেলুন 📝", "নিউটনের মহাকর্ষ সূত্র 🍏", "G ও g এর পার্থক্য কী? 🌍", "দূরত্ব দ্বিগুণ করার প্রভাব? 🛰️"];
+    }
+    if (normalized.includes("physics/optics")) {
+      return currentLang === "en" 
+        ? ["Optics quiz 📝", "Explain lens refraction 🔍", "What is Snell's Law? 🔬", "Convex vs Concave lens 👓"]
+        : ["আলোকবিজ্ঞান কুইজ 📝", "লেন্সের প্রতিসরণ ব্যাখ্যা কর 🔍", "স্নেলের সূত্র কী? 🔬", "উত্তল বনাম অবতল লেন্স 👓"];
+    }
+    if (normalized.includes("physics/solar")) {
+      return currentLang === "en" 
+        ? ["Solar system quiz 📝", "Explain planet orbits 🪐", "Kepler's Three Laws 🌌", "Orbital speed formula 🚀"]
+        : ["সৌরজগৎ কুইজ 📝", "গ্রহের কক্ষপথ ব্যাখ্যা কর 🪐", "কেপলারের ৩টি সূত্র 🌌", "কক্ষপথ বেগের সূত্র 🚀"];
+    }
+    if (normalized.includes("chemistry/atoms")) {
+      return currentLang === "en" 
+        ? ["Atoms quiz 📝", "Protons vs Electrons ⚛️", "What is an Isotope? 🧪", "Build a Carbon atom 💎"]
+        : ["পরমাণু কুইজ খেলুন 📝", "প্রোটন বনাম ইলেকট্রন ⚛️", "আইসোটোপ কী? 🧪", "কার্বন পরমাণু গঠন 💎"];
+    }
+    if (normalized.includes("chemistry/molecules")) {
+      return currentLang === "en" 
+        ? ["Molecules quiz 📝", "What is covalent bonding? 🔗", "Explain VSEPR theory 🌐", "Why is water molecule bent? 💧"]
+        : ["অণু কুইজ খেলুন 📝", "সমযোজী বন্ধন কী? 🔗", "VSEPR তত্ত্ব ব্যাখ্যা কর 🌐", "পানির অণু বাঁকা কেন? 💧"];
+    }
+    if (normalized.includes("chemistry/ph-scale")) {
+      return currentLang === "en" 
+        ? ["pH Scale quiz 📝", "Explain acids & bases 🍋", "Why is pure water pH 7? 💧", "What does pH stand for? 🧪"]
+        : ["pH স্কেল কুইজ খেলুন 📝", "অম্ল ও ক্ষারক ব্যাখ্যা কর 🍋", "বিশুদ্ধ পানির pH ৭ কেন? 💧", "pH এর পূর্ণরূপ কী? 🧪"];
+    }
+    if (normalized.includes("chemistry/states")) {
+      return currentLang === "en" 
+        ? ["Matter states quiz 📝", "Melting vs Boiling 🌡️", "Intermolecular forces 🌌", "Water phase changes 💧"]
+        : ["পদার্থের অবস্থা কুইজ 📝", "গলনাঙ্ক ও স্ফুটনাঙ্ক 🌡️", "আন্তঃআণবিক আকর্ষণ 🌌", "পানির অবস্থার পরিবর্তন 💧"];
+    }
+    if (normalized.includes("chemistry/periodic-table")) {
+      return currentLang === "en" 
+        ? ["Periodic table quiz 📝", "What are chemical groups? 🗓️", "Explain Electronegativity ⚡", "Reactive alkali metals 🔥"]
+        : ["পর্যায় সারণি কুইজ 📝", "রাসায়নিক গ্রুপ কী? 🗓️", "তড়িৎঋণাত্মকতা ব্যাখ্যা ⚡", "ক্ষার ধাতুর সক্রিয়তা 🔥"];
+    }
+    if (normalized.includes("biology/cells")) {
+      return currentLang === "en" 
+        ? ["Cell biology quiz 📝", "Plant vs Animal cell 🌱", "Mitochondria role 🔋", "What does Nucleus do? 🧠"]
+        : ["কোষ জীববিজ্ঞান কুইজ 📝", "উদ্ভিদ বনাম প্রাণী কোষ 🌱", "মাইটোকন্ড্রিয়ার কাজ 🔋", "নিউক্লিয়াস কী করে? 🧠"];
+    }
+    if (normalized.includes("biology/anatomy")) {
+      return currentLang === "en" 
+        ? ["Anatomy quiz 📝", "Major human organs 🫁", "Skeletal system role 🦴", "Heart and circulation ❤️"]
+        : ["শারীরস্থান কুইজ 📝", "মানুষের প্রধান অঙ্গসমূহ 🫁", "কঙ্কালতন্ত্রের ভূমিকা 🦴", "হৃৎপিণ্ড ও রক্তসংবহন ❤️"];
+    }
+    if (normalized.includes("biology/ecology")) {
+      return currentLang === "en" 
+        ? ["Ecosystem quiz 📝", "Explain Food Chains 🌾", "What is carrying capacity? 📈", "Ecosystem balance 🍃"]
+        : ["বাস্তুতন্ত্র কুইজ 📝", "খাদ্য শৃঙ্খল ব্যাখ্যা কর 🌾", "ধারণ ক্ষমতা কী? 📈", "পরিবেশের ভারসাম্য 🍃"];
+    }
+    if (normalized.includes("biology/genetics")) {
+      return currentLang === "en" 
+        ? ["Genetics quiz 📝", "Explain Punnett Squares 🏁", "Dominant vs Recessive 🧬", "Genotype vs Phenotype 🧪"]
+        : ["বংশগতি কুইজ খেলুন 📝", "পানেট স্কয়ারের ব্যাখ্যা 🏁", "প্রকট বনাম প্রচ্ছন্ন 🧬", "জিনোটাইপ ও ফিনোটাইপ 🧪"];
+    }
+    if (normalized.includes("math/vector")) {
+      return currentLang === "en" 
+        ? ["Vectors quiz 📝", "Vector magnitude formula 📐", "Component x & y 📈", "Adding two vectors ➕"]
+        : ["ভেক্টর কুইজ খেলুন 📝", "ভেক্টরের মান নির্ণয়ের সূত্র 📐", "x ও y উপাংশ 📈", "দুটি ভেক্টর যোগ করা ➕"];
+    }
+    if (normalized.includes("math/trigonometry")) {
+      return currentLang === "en" 
+        ? ["Trig quiz 📝", "Explain Unit Circle ⭕", "Sin, Cos, Tan ratios 📐", "Radians vs Degrees 🔄"]
+        : ["ত্রিকোণমিতি কুইজ 📝", "একক বৃত্ত ব্যাখ্যা কর ⭕", "Sin, Cos, Tan অনুপাত 📐", "রেডিয়ান বনাম ডিগ্রি 🔄"];
+    }
+    if (normalized.includes("ict/logic-gates")) {
+      return currentLang === "en" 
+        ? ["Logic gates quiz 📝", "Explain XOR truth table 🎛️", "AND vs NAND gate 🔌", "How to build circuit? ℹ️"]
+        : ["লজিক গেট কুইজ 📝", "XOR গেটের ট্রুথ টেবিল 🎛️", "AND বনাম NAND গেট 🔌", "সার্কিট কীভাবে তৈরি করব? ℹ️"];
+    }
+    if (normalized.includes("ict/circuit-construction")) {
+      return currentLang === "en" 
+        ? ["Circuit quiz 📝", "What is Ohm's Law? ⚡", "Series vs Parallel 🔌", "Measure voltage & current 📊"]
+        : ["তড়িৎ সার্কিট কুইজ 📝", "ওহমের সূত্রটি কী? ⚡", "শ্রেণী বনাম সমান্তরাল 🔌", "ভোল্টেজ ও কারেন্ট পরিমাপ 📊"];
+    }
+    if (normalized.includes("ict/ai")) {
+      return currentLang === "en" 
+        ? ["AI/ML quiz 📝", "What is Neural Network? 🧠", "Supervised learning 🤖", "Explain training model 📊"]
+        : ["AI ও ML কুইজ খেলুন 📝", "নিউরাল নেটওয়ার্ক কী? 🧠", "সুপারভাইজড লার্নিং 🤖", "মডেল ট্রেইনিং ব্যাখ্যা 📊"];
+    }
+    if (normalized.includes("ict/programming")) {
+      return currentLang === "en" 
+        ? ["Coding quiz 📝", "What is a loop? 🔄", "Variables & Types 📦", "Conditionals (if/else) 🔀"]
+        : ["প্রোগ্রামিং কুইজ 📝", "লুপ (Loop) বলতে কী বোঝায়? 🔄", "ভেরিয়েবল ও ডাটা টাইপ 📦", "কন্ডিশনাল স্টেটমেন্ট 🔀"];
+    }
+
+    return currentLang === "en" ? defaultEn : defaultBn;
+  };
+
+  const quickSuggestions = getContextualSuggestions(pathname || "", lang);
 
   const recogRef = useRef<any>(null)
   const currentTranscriptRef = useRef<string>("")
