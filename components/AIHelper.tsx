@@ -6,6 +6,8 @@ import { useRouter, usePathname } from "next/navigation"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useTheme } from "next-themes";
+import AnimatedKoji, { KojiState } from "./AnimatedKoji";
+
 
 declare global {
   interface Window {
@@ -53,6 +55,17 @@ export default function AIHelper() {
   const [speakerEnabled, setSpeakerEnabled] = useState(false)
   const [context, setContext] = useState<string | null>(null);
   const [viewportWidth, setViewportWidth] = useState<number>(typeof window !== "undefined" ? window.innerWidth : 1280);
+  const [isThinking, setIsThinking] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  const kojiState: KojiState = listening
+    ? "listening"
+    : isThinking
+      ? "thinking"
+      : isSpeaking
+        ? "speaking"
+        : "idle";
+
 
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const resizeStartX = useRef(0)
@@ -391,6 +404,7 @@ export default function AIHelper() {
       currentAudioContextRef.current.close().catch(console.error);
       currentAudioContextRef.current = null;
       currentAudioSourceRef.current = null;
+      setIsSpeaking(false);
     }
     setTimeout(() => {
       setOpen(false)
@@ -594,6 +608,7 @@ export default function AIHelper() {
           currentAudioContextRef.current.close().catch(console.error);
           currentAudioContextRef.current = null;
           currentAudioSourceRef.current = null;
+          setIsSpeaking(false);
         }
         lastSpokenRef.current = null
       }
@@ -624,6 +639,7 @@ export default function AIHelper() {
     if (currentAudioContextRef.current) {
       currentAudioContextRef.current.close().catch(console.error);
       currentAudioContextRef.current = null;
+      setIsSpeaking(false);
     }
     currentAudioSourceRef.current = null;
 
@@ -675,19 +691,23 @@ export default function AIHelper() {
         source.onended = () => {
           currentAudioContextRef.current = null;
           currentAudioSourceRef.current = null;
+          setIsSpeaking(false);
           resolve();
         };
 
         source.addEventListener('error', (error) => {
           currentAudioContextRef.current = null;
           currentAudioSourceRef.current = null;
+          setIsSpeaking(false);
           reject(error);
         });
 
+        setIsSpeaking(true);
         source.start(0);
       } catch (error) {
         currentAudioContextRef.current = null;
         currentAudioSourceRef.current = null;
+        setIsSpeaking(false);
         reject(error);
       }
     });
@@ -761,6 +781,7 @@ export default function AIHelper() {
     const thinkingMsg = { role: "bot" as const, text: "", time: Date.now() }
     setMessages(m => [...m, thinkingMsg])
     
+    setIsThinking(true)
     try {
       let fullReply = "";
       const { reply, intent } = await fetchReply(trimmed, (chunk: string) => {
@@ -806,6 +827,8 @@ export default function AIHelper() {
       })
 
       speakBotReply(fallback)
+    } finally {
+      setIsThinking(false)
     }
   }
 
@@ -898,137 +921,56 @@ export default function AIHelper() {
 
   return (
     <>
-      {!open && (
+      <button
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          if (open) {
+            handleClose();
+          } else {
+            setIsFullscreen(viewportWidth < 820)
+            setOpen(true)
+          }
+        }}
+        style={{
+          position: "fixed",
+          right: open ? `calc(${sidebarWidthStyle} + 20px)` : "28px",
+          bottom: 28,
+          zIndex: 9999,
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          outline: "none",
+          padding: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          transition: "right 0.35s cubic-bezier(0.19, 1, 0.22, 1), transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = "scale(1.15) translateY(-4px)"
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = "scale(1) translateY(0)"
+        }}
+      >
+        {/* Radial Glow Backing */}
         <div
           style={{
-            position: "fixed",
-            right: 24,
-            bottom: 24,
-            zIndex: 9999,
+            position: "absolute",
+            width: open ? "120px" : "150px",
+            height: open ? "120px" : "150px",
+            borderRadius: "50%",
+            background: isDark
+              ? "radial-gradient(circle, rgba(34, 197, 94, 0.22) 0%, rgba(34, 197, 94, 0) 70%)"
+              : "radial-gradient(circle, rgba(34, 197, 94, 0.14) 0%, rgba(34, 197, 94, 0) 70%)",
+            filter: "blur(6px)",
+            pointerEvents: "none",
+            zIndex: -1,
           }}
-        >
-          <div
-            style={{
-              width: viewportWidth < 400 ? Math.min(190, viewportWidth - 28) : 206,
-              padding: viewportWidth < 400 ? "14px 14px" : "16px 16px",
-              borderRadius: "16px",
-              background: isDark
-                ? "linear-gradient(160deg, rgba(15, 23, 42, 0.92), rgba(30, 64, 175, 0.65))"
-                : "linear-gradient(160deg, rgba(248, 250, 252, 0.95), rgba(59, 130, 246, 0.32))",
-              boxShadow: isDark
-                ? "0 16px 32px rgba(2, 6, 23, 0.5), 0 5px 14px rgba(30, 64, 175, 0.32)"
-                : "0 16px 30px rgba(59, 130, 246, 0.24), 0 5px 14px rgba(148, 163, 184, 0.16)",
-              border: isDark ? "1px solid rgba(94, 234, 212, 0.24)" : "1px solid rgba(148, 163, 184, 0.28)",
-              backdropFilter: "blur(16px)",
-              WebkitBackdropFilter: "blur(16px)",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              textAlign: "center",
-              gap: viewportWidth < 400 ? 6 : 8,
-              position: "relative",
-              paddingTop: viewportWidth < 400 ? "26px" : "28px",
-            }}
-          >
-            <div
-              style={{
-                position: "absolute",
-                top: viewportWidth < 400 ? "-20px" : "-22px",
-                left: "50%",
-                transform: "translateX(-50%)",
-                width: viewportWidth < 400 ? 46 : 52,
-                height: viewportWidth < 400 ? 46 : 52,
-                borderRadius: "50%",
-                background: isDark
-                  ? "linear-gradient(140deg, rgba(13, 148, 136, 0.9), rgba(59, 130, 246, 0.85))"
-                  : "linear-gradient(140deg, rgba(45, 212, 191, 0.9), rgba(59, 130, 246, 0.9))",
-                border: "2px solid rgba(255, 255, 255, 0.75)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-                marginTop: "2px",
-                overflow: "hidden"
-              }}
-            >
-              <div
-                style={{
-                  width: viewportWidth < 420 ? 32 : 36,
-                  height: viewportWidth < 420 ? 32 : 36,
-                  borderRadius: "50%",
-                  background: isDark ? "rgba(2, 6, 23, 0.85)" : "rgba(248, 250, 252, 0.92)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  marginTop: "2px",
-                  overflow: "hidden"
-                }}
-              >
-                <img
-                  src="/ai-icon.png"
-                  alt="AI Assistant"
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover"
-                  }}
-                />
-              </div>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: viewportWidth < 400 ? 2 : 3,
-                marginTop: viewportWidth < 400 ? 3 : 5,
-              }}
-            >
-              <span style={{ fontSize: viewportWidth < 400 ? "11px" : "12px", fontWeight: 600, letterSpacing: "0.24em", textTransform: "uppercase", opacity: 0.76 }}>
-                {lang === "en" ? "AI Tutor" : "এআই শিক্ষক"}
-              </span>
-            </div>
-            <button
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                setIsFullscreen(viewportWidth < 820)
-                setOpen(true)
-              }}
-
-              style={{
-                marginTop: viewportWidth < 400 ? 2 : 3,
-                padding: viewportWidth < 400 ? "6px 14px" : "7.5px 20px",
-                borderRadius: 8,
-                border: "none",
-                background: isDark
-                  ? "linear-gradient(120deg, rgba(45, 212, 191, 0.88), rgba(56, 189, 248, 0.85))"
-                  : "linear-gradient(120deg, rgba(59, 130, 246, 0.9), rgba(45, 212, 191, 0.9))",
-                color: "white",
-                fontWeight: 600,
-                fontSize: viewportWidth < 400 ? "10.6px" : "11.4px",
-                letterSpacing: "0.11em",
-                cursor: "pointer",
-                boxShadow: "0 5px 12px rgba(45, 212, 191, 0.22)",
-                transition: "transform 0.2s ease, box-shadow 0.2s ease",
-                minWidth: viewportWidth < 400 ? 0 : 148,
-              }}
-              onMouseEnter={(e) => {
-                const btn = e.currentTarget as HTMLButtonElement
-                btn.style.transform = "translateY(-2px) scale(1.01)"
-                btn.style.boxShadow = "0 9px 18px rgba(45, 212, 191, 0.24)"
-              }}
-              onMouseLeave={(e) => {
-                const btn = e.currentTarget as HTMLButtonElement
-                btn.style.transform = "translateY(0)"
-                btn.style.boxShadow = "0 5px 12px rgba(45, 212, 191, 0.22)"
-              }}
-            >
-              {lang === "en" ? "Open Educator" : "শিক্ষক খোলা"}
-            </button>
-          </div>
-        </div>
-      )}
+        />
+        <AnimatedKoji state={kojiState} size={open ? 98 : 124} />
+      </button>
 
       {open && (
         <div
@@ -1422,29 +1364,8 @@ export default function AIHelper() {
                 }}
               >
                 {m.role === "bot" && (
-                  <div
-                    style={{
-                      width: "32px",
-                      height: "32px",
-                      borderRadius: "50%",
-                      background: isDark ? "linear-gradient(135deg, #2ecc71 0%, #34c759 100%)" : "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                      marginTop: "2px",
-                      overflow: "hidden"
-                    }}
-                  >
-                    <img 
-                      src="/ai-icon.png" 
-                      alt="AI Assistant"
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover"
-                      }}
-                    />
+                  <div style={{ flexShrink: 0, marginTop: "2px" }}>
+                    <AnimatedKoji state="idle" size={32} />
                   </div>
                 )}
                 <div
