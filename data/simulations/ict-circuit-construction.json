@@ -1,0 +1,14 @@
+{
+  "name": "Circuit Construction",
+  "description": "An interactive circuit builder with batteries, wires, resistors, light bulbs, switches, and meters (voltmeter, ammeter).",
+  "concepts": [
+    "Ohm's Law",
+    "Series vs Parallel circuits",
+    "Voltage, Current, Resistance"
+  ],
+  "formulas": [
+    "V = I * R",
+    "P = V * I"
+  ],
+  "suggestedActivity": "Build a parallel circuit with two light bulbs and notice how unscrewing one bulb does not turn off the other."
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Human Anatomy",
+  "description": "An interactive human anatomy explorer highlighting skeletal, muscular, and major organ systems.",
+  "concepts": [
+    "Skeletal system",
+    "Circulatory system",
+    "Respiratory system",
+    "Organ coordination"
+  ],
+  "suggestedActivity": "Locate the rib cage and learn how it protects the lungs and the beating heart."
+}

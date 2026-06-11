@@ -6,6 +6,10 @@ import { useRouter, usePathname } from "next/navigation"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useTheme } from "next-themes";
+import AnimatedKoji, { KojiState } from "./AnimatedKoji";
+import { motion, AnimatePresence } from "motion/react";
+
+
 
 declare global {
   interface Window {
@@ -36,6 +40,33 @@ function markdownToSpeech(text: string) {
     .trim();
 }
 
+function splitIntoShortChunks(text: string): string[] {
+  // First, split by punctuation: . , ? ! । ; : \n
+  const parts = text.split(/(?<=[.,?!।;:—\-\n])\s+/);
+  const result: string[] = [];
+
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+
+    const words = trimmed.split(/\s+/).filter(w => w.length > 0);
+    // If the part has 10 words or fewer, keep it intact
+    if (words.length <= 10) {
+      result.push(trimmed);
+    } else {
+      // Otherwise, split it into chunks of 8 words to keep bubble text compact
+      for (let i = 0; i < words.length; i += 8) {
+        const chunk = words.slice(i, i + 8).join(" ");
+        if (chunk.trim()) {
+          result.push(chunk.trim());
+        }
+      }
+    }
+  }
+
+  return result.filter(s => s.length > 0);
+}
+
 export default function AIHelper() {
   const router = useRouter()
   const pathname = usePathname()
@@ -53,6 +84,40 @@ export default function AIHelper() {
   const [speakerEnabled, setSpeakerEnabled] = useState(false)
   const [context, setContext] = useState<string | null>(null);
   const [viewportWidth, setViewportWidth] = useState<number>(typeof window !== "undefined" ? window.innerWidth : 1280);
+  const [isThinking, setIsThinking] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [bubbleText, setBubbleText] = useState("");
+  const [showBubble, setShowBubble] = useState(false);
+  const [sentencesArray, setSentencesArray] = useState<string[]>([]);
+  const [currentSentenceIndex, setCurrentSentenceIndex] = useState<number>(-1);
+
+  const clearSpeakingQueue = () => {
+    setSentencesArray([]);
+    setCurrentSentenceIndex(-1);
+    setIsSpeaking(false);
+    setShowBubble(false);
+    setBubbleText("");
+    prefetchedAudioRef.current = {};
+    if (currentAudioSourceRef.current) {
+      try {
+        currentAudioSourceRef.current.stop();
+      } catch {}
+      currentAudioSourceRef.current = null;
+    }
+    if (currentAudioContextRef.current) {
+      currentAudioContextRef.current.close().catch(console.error);
+      currentAudioContextRef.current = null;
+    }
+  };
+
+  const kojiState: KojiState = listening
+    ? "listening"
+    : isThinking
+      ? "thinking"
+      : isSpeaking
+        ? "speaking"
+        : "idle";
+
 
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const resizeStartX = useRef(0)
@@ -60,6 +125,7 @@ export default function AIHelper() {
   const didLoadFromStorage = useRef(false)
   const currentAudioContextRef = useRef<AudioContext | null>(null);
   const currentAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const prefetchedAudioRef = useRef<{ [text: string]: AudioBuffer }>({});
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
@@ -82,19 +148,124 @@ export default function AIHelper() {
         "শিখতে প্রস্তুত?"
       ];
 
-  const quickSuggestions = lang === "en" 
-    ? [
-        "Explain me this concept",
-        "What is this?",
-        "How does this work?",
-        "Show me examples of this",
-      ]
-    : [
-        "এই কনপেট ব্যাখ্যা করুন",
-        "এই কিভাবে কাজ করে?",
-        "এই কেন্দ্রে কিভাবে কাজ করে?",
-        "এই কেন্দ্রে কেন্দ্রিত উদাহরণ দেখান",
-      ];
+  const getContextualSuggestions = (path: string, currentLang: "en" | "bn") => {
+    const defaultEn = [
+      "Explain this concept 💡",
+      "How does this work? ⚙️",
+      "Give me an analogy 🍎",
+      "Take a quick quiz! 📝"
+    ];
+    const defaultBn = [
+      "এই ধারণাটি ব্যাখ্যা কর 💡",
+      "এটি কীভাবে কাজ করে? ⚙️",
+      "বাস্তব উদাহরণ দিন 🍎",
+      "একটি কুইজ খেলুন! 📝"
+    ];
+
+    if (!path) return currentLang === "en" ? defaultEn : defaultBn;
+
+    const normalized = path.split('?')[0].replace(/^\/|\/$/g, "");
+
+    if (normalized.includes("physics/motion")) {
+      return currentLang === "en" 
+        ? ["Take a motion quiz 📝", "Explain kinematics formulas 📐", "Acceleration analogy 🚀", "How to use this simulation? ℹ️"]
+        : ["গতির কুইজ খেলুন 📝", "গতিবিদ্যার সূত্র ব্যাখ্যা কর 📐", "ত্বরণের বাস্তব উদাহরণ 🚀", "সিমুলেশন ব্যবহারের নিয়ম ℹ️"];
+    }
+    if (normalized.includes("physics/gravity")) {
+      return currentLang === "en" 
+        ? ["Gravity quiz 📝", "Newton's gravity formula 🍏", "What is G vs g? 🌍", "Double the distance effect? 🛰️"]
+        : ["মহাকর্ষ কুইজ খেলুন 📝", "নিউটনের মহাকর্ষ সূত্র 🍏", "G ও g এর পার্থক্য কী? 🌍", "দূরত্ব দ্বিগুণ করার প্রভাব? 🛰️"];
+    }
+    if (normalized.includes("physics/optics")) {
+      return currentLang === "en" 
+        ? ["Optics quiz 📝", "Explain lens refraction 🔍", "What is Snell's Law? 🔬", "Convex vs Concave lens 👓"]
+        : ["আলোকবিজ্ঞান কুইজ 📝", "লেন্সের প্রতিসরণ ব্যাখ্যা কর 🔍", "স্নেলের সূত্র কী? 🔬", "উত্তল বনাম অবতল লেন্স 👓"];
+    }
+    if (normalized.includes("physics/solar")) {
+      return currentLang === "en" 
+        ? ["Solar system quiz 📝", "Explain planet orbits 🪐", "Kepler's Three Laws 🌌", "Orbital speed formula 🚀"]
+        : ["সৌরজগৎ কুইজ 📝", "গ্রহের কক্ষপথ ব্যাখ্যা কর 🪐", "কেপলারের ৩টি সূত্র 🌌", "কক্ষপথ বেগের সূত্র 🚀"];
+    }
+    if (normalized.includes("chemistry/atoms")) {
+      return currentLang === "en" 
+        ? ["Atoms quiz 📝", "Protons vs Electrons ⚛️", "What is an Isotope? 🧪", "Build a Carbon atom 💎"]
+        : ["পরমাণু কুইজ খেলুন 📝", "প্রোটন বনাম ইলেকট্রন ⚛️", "আইসোটোপ কী? 🧪", "কার্বন পরমাণু গঠন 💎"];
+    }
+    if (normalized.includes("chemistry/molecules")) {
+      return currentLang === "en" 
+        ? ["Molecules quiz 📝", "What is covalent bonding? 🔗", "Explain VSEPR theory 🌐", "Why is water molecule bent? 💧"]
+        : ["অণু কুইজ খেলুন 📝", "সমযোজী বন্ধন কী? 🔗", "VSEPR তত্ত্ব ব্যাখ্যা কর 🌐", "পানির অণু বাঁকা কেন? 💧"];
+    }
+    if (normalized.includes("chemistry/ph-scale")) {
+      return currentLang === "en" 
+        ? ["pH Scale quiz 📝", "Explain acids & bases 🍋", "Why is pure water pH 7? 💧", "What does pH stand for? 🧪"]
+        : ["pH স্কেল কুইজ খেলুন 📝", "অম্ল ও ক্ষারক ব্যাখ্যা কর 🍋", "বিশুদ্ধ পানির pH ৭ কেন? 💧", "pH এর পূর্ণরূপ কী? 🧪"];
+    }
+    if (normalized.includes("chemistry/states")) {
+      return currentLang === "en" 
+        ? ["Matter states quiz 📝", "Melting vs Boiling 🌡️", "Intermolecular forces 🌌", "Water phase changes 💧"]
+        : ["পদার্থের অবস্থা কুইজ 📝", "গলনাঙ্ক ও স্ফুটনাঙ্ক 🌡️", "আন্তঃআণবিক আকর্ষণ 🌌", "পানির অবস্থার পরিবর্তন 💧"];
+    }
+    if (normalized.includes("chemistry/periodic-table")) {
+      return currentLang === "en" 
+        ? ["Periodic table quiz 📝", "What are chemical groups? 🗓️", "Explain Electronegativity ⚡", "Reactive alkali metals 🔥"]
+        : ["পর্যায় সারণি কুইজ 📝", "রাসায়নিক গ্রুপ কী? 🗓️", "তড়িৎঋণাত্মকতা ব্যাখ্যা ⚡", "ক্ষার ধাতুর সক্রিয়তা 🔥"];
+    }
+    if (normalized.includes("biology/cells")) {
+      return currentLang === "en" 
+        ? ["Cell biology quiz 📝", "Plant vs Animal cell 🌱", "Mitochondria role 🔋", "What does Nucleus do? 🧠"]
+        : ["কোষ জীববিজ্ঞান কুইজ 📝", "উদ্ভিদ বনাম প্রাণী কোষ 🌱", "মাইটোকন্ড্রিয়ার কাজ 🔋", "নিউক্লিয়াস কী করে? 🧠"];
+    }
+    if (normalized.includes("biology/anatomy")) {
+      return currentLang === "en" 
+        ? ["Anatomy quiz 📝", "Major human organs 🫁", "Skeletal system role 🦴", "Heart and circulation ❤️"]
+        : ["শারীরস্থান কুইজ 📝", "মানুষের প্রধান অঙ্গসমূহ 🫁", "কঙ্কালতন্ত্রের ভূমিকা 🦴", "হৃৎপিণ্ড ও রক্তসংবহন ❤️"];
+    }
+    if (normalized.includes("biology/ecology")) {
+      return currentLang === "en" 
+        ? ["Ecosystem quiz 📝", "Explain Food Chains 🌾", "What is carrying capacity? 📈", "Ecosystem balance 🍃"]
+        : ["বাস্তুতন্ত্র কুইজ 📝", "খাদ্য শৃঙ্খল ব্যাখ্যা কর 🌾", "ধারণ ক্ষমতা কী? 📈", "পরিবেশের ভারসাম্য 🍃"];
+    }
+    if (normalized.includes("biology/genetics")) {
+      return currentLang === "en" 
+        ? ["Genetics quiz 📝", "Explain Punnett Squares 🏁", "Dominant vs Recessive 🧬", "Genotype vs Phenotype 🧪"]
+        : ["বংশগতি কুইজ খেলুন 📝", "পানেট স্কয়ারের ব্যাখ্যা 🏁", "প্রকট বনাম প্রচ্ছন্ন 🧬", "জিনোটাইপ ও ফিনোটাইপ 🧪"];
+    }
+    if (normalized.includes("math/vector")) {
+      return currentLang === "en" 
+        ? ["Vectors quiz 📝", "Vector magnitude formula 📐", "Component x & y 📈", "Adding two vectors ➕"]
+        : ["ভেক্টর কুইজ খেলুন 📝", "ভেক্টরের মান নির্ণয়ের সূত্র 📐", "x ও y উপাংশ 📈", "দুটি ভেক্টর যোগ করা ➕"];
+    }
+    if (normalized.includes("math/trigonometry")) {
+      return currentLang === "en" 
+        ? ["Trig quiz 📝", "Explain Unit Circle ⭕", "Sin, Cos, Tan ratios 📐", "Radians vs Degrees 🔄"]
+        : ["ত্রিকোণমিতি কুইজ 📝", "একক বৃত্ত ব্যাখ্যা কর ⭕", "Sin, Cos, Tan অনুপাত 📐", "রেডিয়ান বনাম ডিগ্রি 🔄"];
+    }
+    if (normalized.includes("ict/logic-gates")) {
+      return currentLang === "en" 
+        ? ["Logic gates quiz 📝", "Explain XOR truth table 🎛️", "AND vs NAND gate 🔌", "How to build circuit? ℹ️"]
+        : ["লজিক গেট কুইজ 📝", "XOR গেটের ট্রুথ টেবিল 🎛️", "AND বনাম NAND গেট 🔌", "সার্কিট কীভাবে তৈরি করব? ℹ️"];
+    }
+    if (normalized.includes("ict/circuit-construction")) {
+      return currentLang === "en" 
+        ? ["Circuit quiz 📝", "What is Ohm's Law? ⚡", "Series vs Parallel 🔌", "Measure voltage & current 📊"]
+        : ["তড়িৎ সার্কিট কুইজ 📝", "ওহমের সূত্রটি কী? ⚡", "শ্রেণী বনাম সমান্তরাল 🔌", "ভোল্টেজ ও কারেন্ট পরিমাপ 📊"];
+    }
+    if (normalized.includes("ict/ai")) {
+      return currentLang === "en" 
+        ? ["AI/ML quiz 📝", "What is Neural Network? 🧠", "Supervised learning 🤖", "Explain training model 📊"]
+        : ["AI ও ML কুইজ খেলুন 📝", "নিউরাল নেটওয়ার্ক কী? 🧠", "সুপারভাইজড লার্নিং 🤖", "মডেল ট্রেইনিং ব্যাখ্যা 📊"];
+    }
+    if (normalized.includes("ict/programming")) {
+      return currentLang === "en" 
+        ? ["Coding quiz 📝", "What is a loop? 🔄", "Variables & Types 📦", "Conditionals (if/else) 🔀"]
+        : ["প্রোগ্রামিং কুইজ 📝", "লুপ (Loop) বলতে কী বোঝায়? 🔄", "ভেরিয়েবল ও ডাটা টাইপ 📦", "কন্ডিশনাল স্টেটমেন্ট 🔀"];
+    }
+
+    return currentLang === "en" ? defaultEn : defaultBn;
+  };
+
+  const quickSuggestions = getContextualSuggestions(pathname || "", lang);
 
   const recogRef = useRef<any>(null)
   const currentTranscriptRef = useRef<string>("")
@@ -140,6 +311,103 @@ export default function AIHelper() {
     window.addEventListener("resize", handleResize, { passive: true });
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  // Sync bubble text and visibility based on thinking, streaming, and sentence playback queue
+  useEffect(() => {
+    const lastMsg = messages[messages.length - 1];
+
+    // 1. If currently generating response (isThinking is true):
+    if (isThinking) {
+      if (lastMsg && lastMsg.role === "bot" && lastMsg.text.trim() !== "") {
+        const cleanText = markdownToSpeech(lastMsg.text);
+        const chunks = splitIntoShortChunks(cleanText);
+        const latestChunk = chunks[chunks.length - 1] || "";
+        setBubbleText(latestChunk);
+      } else {
+        setBubbleText(lang === "en" ? "Thinking..." : "চিন্তা করছি...");
+      }
+      setShowBubble(true);
+      return;
+    }
+
+    // 2. If currently playing through the sentence queue:
+    if (currentSentenceIndex >= 0 && currentSentenceIndex < sentencesArray.length) {
+      setBubbleText(sentencesArray[currentSentenceIndex]);
+      setShowBubble(true);
+      return;
+    }
+
+    // 3. Queue finished or inactive: Hide instantly
+    setShowBubble(false);
+    setBubbleText("");
+  }, [isThinking, currentSentenceIndex, sentencesArray, messages, lang]);
+
+  // Sentence-by-sentence playback queue
+  useEffect(() => {
+    if (sentencesArray.length === 0) return;
+
+    if (currentSentenceIndex < 0 || currentSentenceIndex >= sentencesArray.length) {
+      setIsSpeaking(false);
+      setSentencesArray([]);
+      setCurrentSentenceIndex(-1);
+      setShowBubble(false);
+      setBubbleText("");
+      // Queue finished! Resume microphone if voice mode was active
+      if (shouldResumeMicRef.current) {
+        shouldResumeMicRef.current = false;
+        setTimeout(() => startMic().catch(console.error), 400);
+      }
+      return;
+    }
+
+    let active = true;
+    let timer: any;
+
+    const playCurrentSentence = async () => {
+      const activeText = sentencesArray[currentSentenceIndex];
+      if (!activeText) return;
+
+      const langCode = lang === "bn" ? "bn-BD" : "en-US";
+
+      // Pre-fetch the next sentence immediately in the background
+      if (currentSentenceIndex + 1 < sentencesArray.length) {
+        prefetchNextSentence(currentSentenceIndex + 1, langCode).catch(console.error);
+      }
+
+      if (speakerEnabled) {
+        setIsSpeaking(true);
+        try {
+          await speakWithGroq(activeText, langCode);
+          if (active) {
+            setCurrentSentenceIndex(prev => prev + 1);
+          }
+        } catch (error) {
+          console.error("Error playing sentence:", error);
+          if (active) {
+            timer = setTimeout(() => {
+              setCurrentSentenceIndex(prev => prev + 1);
+            }, 3000);
+          }
+        }
+      } else {
+        // Speaker is disabled, cycle visually based on character reading speed
+        const readingTime = Math.max(2500, activeText.length * 55 + 1000);
+        timer = setTimeout(() => {
+          if (active) {
+            setCurrentSentenceIndex(prev => prev + 1);
+          }
+        }, readingTime);
+      }
+    };
+
+    playCurrentSentence();
+
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, [currentSentenceIndex, sentencesArray, speakerEnabled, lang]);
+
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -282,11 +550,7 @@ export default function AIHelper() {
 
     // Don't stop mic or speaker when closing sidebar - they should persist
     // Only cancel current speech utterance if one is playing
-    if (currentAudioContextRef.current) {
-      currentAudioContextRef.current.close().catch(console.error);
-      currentAudioContextRef.current = null;
-      currentAudioSourceRef.current = null;
-    }
+    clearSpeakingQueue();
     setTimeout(() => {
       setOpen(false)
       setIsClosing(false)
@@ -371,7 +635,6 @@ export default function AIHelper() {
         setListening(true);
         speechModeRef.current = true;
         setSpeechToSpeechMode(true);
-        if (!open) setOpen(true);
       };
 
       mr.ondataavailable = (e: BlobEvent) => {
@@ -485,11 +748,7 @@ export default function AIHelper() {
       const next = !prev
       if (!next) {
         // Cancel any ongoing speech
-        if (currentAudioContextRef.current) {
-          currentAudioContextRef.current.close().catch(console.error);
-          currentAudioContextRef.current = null;
-          currentAudioSourceRef.current = null;
-        }
+        clearSpeakingQueue();
         lastSpokenRef.current = null
       }
       // Save state to localStorage
@@ -498,15 +757,25 @@ export default function AIHelper() {
     })
   }
 
-  const speakBotReply = (rawText: string) => {
-    if (!speakerEnabled || typeof window === "undefined") return;
-    
+  const playBotResponse = (rawText: string) => {
+    if (typeof window === "undefined") return;
+
     if (lastSpokenRef.current === rawText) return;
+    lastSpokenRef.current = rawText;
 
     const sanitized = markdownToSpeech(rawText);
-    if (!sanitized) return;
+    if (!sanitized) {
+      clearSpeakingQueue();
+      return;
+    }
 
-    const langCode = lang === "bn" ? "bn-BD" : "en-US";
+    // Split text into short clause/phrase chunks for quick dynamic sync
+    const splitSentences = splitIntoShortChunks(sanitized);
+
+    if (splitSentences.length === 0) {
+      clearSpeakingQueue();
+      return;
+    }
 
     if (speechModeRef.current) {
       shouldResumeMicRef.current = true;
@@ -515,74 +784,95 @@ export default function AIHelper() {
       shouldResumeMicRef.current = false;
     }
 
-    // Cancel any ongoing audio playback
+    // Cancel ongoing audio
     if (currentAudioContextRef.current) {
       currentAudioContextRef.current.close().catch(console.error);
       currentAudioContextRef.current = null;
     }
     currentAudioSourceRef.current = null;
 
-    lastSpokenRef.current = rawText;
+    setSentencesArray(splitSentences);
+    setCurrentSentenceIndex(0);
+  };
 
-    speakWithGroq(sanitized, langCode)
-      .then(() => {
-        if (shouldResumeMicRef.current) {
-          shouldResumeMicRef.current = false;
-          setTimeout(() => startMic().catch(console.error), 400);
-        }
-      })
-      .catch((error) => {
-        console.error('Groq TTS error:', error);
-        if (shouldResumeMicRef.current) {
-          shouldResumeMicRef.current = false;
-          setTimeout(() => startMic().catch(console.error), 400);
-        }
+  const getAudioContext = (): AudioContext => {
+    if (!currentAudioContextRef.current) {
+      currentAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    return currentAudioContextRef.current;
+  };
+
+  const prefetchNextSentence = async (index: number, langCode: string) => {
+    if (index < 0 || index >= sentencesArray.length) return;
+    const text = sentencesArray[index];
+    if (!text || prefetchedAudioRef.current[text]) return;
+
+    try {
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, language: langCode }),
       });
+      if (!response.ok) return;
+
+      const audioData = await response.arrayBuffer();
+      const audioContext = getAudioContext();
+      const audioBuffer = await audioContext.decodeAudioData(audioData);
+      prefetchedAudioRef.current[text] = audioBuffer;
+    } catch (e) {
+      console.warn("Failed to prefetch sentence audio:", e);
+    }
   };
 
   const speakWithGroq = async (text: string, langCode: string): Promise<void> => {
     return new Promise(async (resolve, reject) => {
       try {
-        const response = await fetch('/api/tts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text, language: langCode }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`TTS API responded with status ${response.status}`);
-        }
-
-        const audioData = await response.arrayBuffer();
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        currentAudioContextRef.current = audioContext;
-
+        const audioContext = getAudioContext();
         if (audioContext.state !== 'running') {
           await audioContext.resume();
         }
 
-        const audioBuffer = await audioContext.decodeAudioData(audioData);
+        let audioBuffer: AudioBuffer;
+
+        if (prefetchedAudioRef.current[text]) {
+          audioBuffer = prefetchedAudioRef.current[text];
+        } else {
+          const response = await fetch('/api/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, language: langCode }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`TTS API responded with status ${response.status}`);
+          }
+
+          const audioData = await response.arrayBuffer();
+          audioBuffer = await audioContext.decodeAudioData(audioData);
+        }
+
         const source = audioContext.createBufferSource();
         currentAudioSourceRef.current = source;
         source.buffer = audioBuffer;
         source.connect(audioContext.destination);
 
         source.onended = () => {
-          currentAudioContextRef.current = null;
           currentAudioSourceRef.current = null;
+          setIsSpeaking(false);
           resolve();
         };
 
         source.addEventListener('error', (error) => {
-          currentAudioContextRef.current = null;
           currentAudioSourceRef.current = null;
+          setIsSpeaking(false);
           reject(error);
         });
 
+        setIsSpeaking(true);
         source.start(0);
       } catch (error) {
-        currentAudioContextRef.current = null;
         currentAudioSourceRef.current = null;
+        setIsSpeaking(false);
         reject(error);
       }
     });
@@ -649,6 +939,7 @@ export default function AIHelper() {
   const handleSubmit = async (text: string, fromMic = false) => {
     if (!text.trim()) return
     const trimmed = text.trim()
+    clearSpeakingQueue();
     setMessages(m => [...m, { role: "user", text: trimmed, time: Date.now() }])
 
     
@@ -656,6 +947,7 @@ export default function AIHelper() {
     const thinkingMsg = { role: "bot" as const, text: "", time: Date.now() }
     setMessages(m => [...m, thinkingMsg])
     
+    setIsThinking(true)
     try {
       let fullReply = "";
       const { reply, intent } = await fetchReply(trimmed, (chunk: string) => {
@@ -687,7 +979,7 @@ export default function AIHelper() {
           finalReply += '...';
         }
       }
-      speakBotReply(finalReply)
+      playBotResponse(finalReply)
     } catch (e) {
       console.error("handleSubmit error", e)
       const fallback = lang === "bn"
@@ -700,7 +992,9 @@ export default function AIHelper() {
         return copy
       })
 
-      speakBotReply(fallback)
+      playBotResponse(fallback)
+    } finally {
+      setIsThinking(false)
     }
   }
 
@@ -793,137 +1087,215 @@ export default function AIHelper() {
 
   return (
     <>
-      {!open && (
-        <div
-          style={{
-            position: "fixed",
-            right: 24,
-            bottom: 24,
-            zIndex: 9999,
-          }}
-        >
-          <div
-            style={{
-              width: viewportWidth < 400 ? Math.min(190, viewportWidth - 28) : 206,
-              padding: viewportWidth < 400 ? "14px 14px" : "16px 16px",
-              borderRadius: "16px",
-              background: isDark
-                ? "linear-gradient(160deg, rgba(15, 23, 42, 0.92), rgba(30, 64, 175, 0.65))"
-                : "linear-gradient(160deg, rgba(248, 250, 252, 0.95), rgba(59, 130, 246, 0.32))",
-              boxShadow: isDark
-                ? "0 16px 32px rgba(2, 6, 23, 0.5), 0 5px 14px rgba(30, 64, 175, 0.32)"
-                : "0 16px 30px rgba(59, 130, 246, 0.24), 0 5px 14px rgba(148, 163, 184, 0.16)",
-              border: isDark ? "1px solid rgba(94, 234, 212, 0.24)" : "1px solid rgba(148, 163, 184, 0.28)",
-              backdropFilter: "blur(16px)",
-              WebkitBackdropFilter: "blur(16px)",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              textAlign: "center",
-              gap: viewportWidth < 400 ? 6 : 8,
-              position: "relative",
-              paddingTop: viewportWidth < 400 ? "26px" : "28px",
-            }}
-          >
-            <div
+      <div
+        style={{
+          position: "fixed",
+          right: open ? `calc(${sidebarWidthStyle} + 20px)` : "28px",
+          bottom: 28,
+          zIndex: 9999,
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          transition: "right 0.35s cubic-bezier(0.19, 1, 0.22, 1)",
+        }}
+      >
+        {/* Floating Speech Bubble (Only when sidebar is closed and bot is speaking/thinking/typing) */}
+        <AnimatePresence>
+          {!open && showBubble && bubbleText.trim() !== "" && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 10 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              className="speech-bubble-scroll"
               style={{
                 position: "absolute",
-                top: viewportWidth < 400 ? "-20px" : "-22px",
-                left: "50%",
-                transform: "translateX(-50%)",
-                width: viewportWidth < 400 ? 46 : 52,
-                height: viewportWidth < 400 ? 46 : 52,
-                borderRadius: "50%",
-                background: isDark
-                  ? "linear-gradient(140deg, rgba(13, 148, 136, 0.9), rgba(59, 130, 246, 0.85))"
-                  : "linear-gradient(140deg, rgba(45, 212, 191, 0.9), rgba(59, 130, 246, 0.9))",
-                border: "2px solid rgba(255, 255, 255, 0.75)",
+                bottom: "100%",
+                right: "42px",
+                marginBottom: "16px",
+                width: "270px",
+                maxHeight: "160px",
+                overflowY: "auto",
+                scrollbarWidth: "none",
+                background: isDark 
+                  ? "linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95))" 
+                  : "linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.95))",
+                border: isDark ? "1.5px solid rgba(148, 163, 184, 0.22)" : "1.5px solid rgba(148, 163, 184, 0.35)",
+                borderRadius: "16px 16px 4px 16px",
+                padding: "12px 16px",
+                boxShadow: isDark 
+                  ? "0 10px 25px rgba(2, 6, 23, 0.4), 0 4px 12px rgba(2, 6, 23, 0.3)" 
+                  : "0 10px 25px rgba(148, 163, 184, 0.25), 0 4px 12px rgba(148, 163, 184, 0.15)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                color: isDark ? "#f8fafc" : "#0f172a",
+                fontSize: "14.2px",
+                lineHeight: "1.48",
+                fontWeight: 600,
+                pointerEvents: "none",
                 display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-                marginTop: "2px",
-                overflow: "hidden"
+                flexDirection: "column",
+                gap: "4px",
               }}
             >
+              <style>{`
+                .speech-bubble-scroll::-webkit-scrollbar {
+                  display: none;
+                }
+              `}</style>
+              
+              {/* Little Speech Bubble Tail */}
               <div
                 style={{
-                  width: viewportWidth < 420 ? 32 : 36,
-                  height: viewportWidth < 420 ? 32 : 36,
-                  borderRadius: "50%",
-                  background: isDark ? "rgba(2, 6, 23, 0.85)" : "rgba(248, 250, 252, 0.92)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  marginTop: "2px",
-                  overflow: "hidden"
+                  position: "absolute",
+                  bottom: "-10px",
+                  right: "24px",
+                  width: "16px",
+                  height: "10px",
+                  overflow: "hidden",
                 }}
               >
-                <img
-                  src="/ai-icon.png"
-                  alt="AI Assistant"
+                <div
                   style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover"
+                    width: "10px",
+                    height: "10px",
+                    background: isDark ? "#1f2937" : "#ffffff",
+                    borderBottom: isDark ? "1.5px solid rgba(148, 163, 184, 0.22)" : "1.5px solid rgba(148, 163, 184, 0.35)",
+                    borderRight: isDark ? "1.5px solid rgba(148, 163, 184, 0.22)" : "1.5px solid rgba(148, 163, 184, 0.35)",
+                    transform: "rotate(45deg) translate(-3px, -3px)",
+                    boxShadow: "2px 2px 4px rgba(0,0,0,0.08)",
                   }}
                 />
               </div>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: viewportWidth < 400 ? 2 : 3,
-                marginTop: viewportWidth < 400 ? 3 : 5,
-              }}
-            >
-              <span style={{ fontSize: viewportWidth < 400 ? "11px" : "12px", fontWeight: 600, letterSpacing: "0.24em", textTransform: "uppercase", opacity: 0.76 }}>
-                {lang === "en" ? "AI Tutor" : "এআই শিক্ষক"}
-              </span>
-            </div>
-            <button
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                setIsFullscreen(viewportWidth < 820)
-                setOpen(true)
-              }}
 
-              style={{
-                marginTop: viewportWidth < 400 ? 2 : 3,
-                padding: viewportWidth < 400 ? "6px 14px" : "7.5px 20px",
-                borderRadius: 8,
-                border: "none",
-                background: isDark
-                  ? "linear-gradient(120deg, rgba(45, 212, 191, 0.88), rgba(56, 189, 248, 0.85))"
-                  : "linear-gradient(120deg, rgba(59, 130, 246, 0.9), rgba(45, 212, 191, 0.9))",
-                color: "white",
-                fontWeight: 600,
-                fontSize: viewportWidth < 400 ? "10.6px" : "11.4px",
-                letterSpacing: "0.11em",
-                cursor: "pointer",
-                boxShadow: "0 5px 12px rgba(45, 212, 191, 0.22)",
-                transition: "transform 0.2s ease, box-shadow 0.2s ease",
-                minWidth: viewportWidth < 400 ? 0 : 148,
-              }}
-              onMouseEnter={(e) => {
-                const btn = e.currentTarget as HTMLButtonElement
-                btn.style.transform = "translateY(-2px) scale(1.01)"
-                btn.style.boxShadow = "0 9px 18px rgba(45, 212, 191, 0.24)"
-              }}
-              onMouseLeave={(e) => {
-                const btn = e.currentTarget as HTMLButtonElement
-                btn.style.transform = "translateY(0)"
-                btn.style.boxShadow = "0 5px 12px rgba(45, 212, 191, 0.22)"
-              }}
-            >
-              {lang === "en" ? "Open Educator" : "শিক্ষক খোলা"}
-            </button>
-          </div>
-        </div>
-      )}
+              {isThinking ? (
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", color: isDark ? "#a7f3d0" : "#059669" }}>
+                  <motion.span
+                    animate={{ opacity: [0.4, 1, 0.4] }}
+                    transition={{ duration: 1.2, repeat: Infinity }}
+                  >
+                    ●
+                  </motion.span>
+                  <span>{lang === "en" ? "Thinking..." : "চিন্তা করছি..."}</span>
+                </div>
+              ) : (
+                <div style={{ wordBreak: "break-word", whiteSpace: "normal" }}>
+                  {bubbleText}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Main Companion Button */}
+        <motion.button
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            if (open) {
+              handleClose();
+            } else {
+              setIsFullscreen(viewportWidth < 820)
+              setOpen(true)
+            }
+          }}
+          whileHover={{
+            scale: 1.15,
+            y: -6,
+            rotate: [0, -8, 8, 0],
+            transition: {
+              rotate: { duration: 0.5, ease: "easeInOut" },
+              scale: { type: "spring", stiffness: 400, damping: 15 },
+              y: { type: "spring", stiffness: 400, damping: 15 }
+            }
+          }}
+          whileTap={{ scale: 0.92 }}
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            outline: "none",
+            padding: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+          }}
+        >
+          {/* Radial Glow Backing */}
+          <div
+            style={{
+              position: "absolute",
+              width: open ? "120px" : "150px",
+              height: open ? "120px" : "150px",
+              borderRadius: "50%",
+              background: isDark
+                ? "radial-gradient(circle, rgba(34, 197, 94, 0.22) 0%, rgba(34, 197, 94, 0) 70%)"
+                : "radial-gradient(circle, rgba(34, 197, 94, 0.14) 0%, rgba(34, 197, 94, 0) 70%)",
+              filter: "blur(6px)",
+              pointerEvents: "none",
+              zIndex: -1,
+            }}
+          />
+          <AnimatedKoji state={kojiState} size={open ? 98 : 124} />
+        </motion.button>
+
+        {/* Quick Voice/Mic Toggle Button - POSITIONED RIGHT */}
+        {!isMobile && (
+          <motion.button
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              if (!speakerEnabled) {
+                setSpeakerEnabled(true)
+                localStorage.setItem("ai_helper_speaker_enabled", "true")
+                startMic().catch(console.error)
+                localStorage.setItem("ai_helper_mic_enabled", "true")
+              } else {
+                if (listening) {
+                  stopMic(true)
+                  localStorage.setItem("ai_helper_mic_enabled", "false")
+                } else {
+                  startMic().catch(console.error)
+                  localStorage.setItem("ai_helper_mic_enabled", "true")
+                }
+              }
+            }}
+            whileHover={{ scale: 1.18, x: 2 }}
+            whileTap={{ scale: 0.9 }}
+            style={{
+              width: "36px",
+              height: "36px",
+              borderRadius: "50%",
+              border: "2px solid",
+              borderColor: listening ? "#22d3ee" : speakerEnabled ? "#3b82f6" : "#475569",
+              background: listening ? "#22d3ee" : isDark ? "#1e293b" : "#ffffff",
+              color: listening ? "#0f172a" : isDark ? "#e2e8f0" : "#64748b",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: listening 
+                ? "0 0 16px rgba(34, 211, 238, 0.75), 0 4px 10px rgba(0, 0, 0, 0.2)" 
+                : speakerEnabled
+                  ? "0 0 12px rgba(59, 130, 246, 0.45), 0 2px 6px rgba(0, 0, 0, 0.15)"
+                  : "0 2px 6px rgba(0, 0, 0, 0.15)",
+              zIndex: 10005,
+              transition: "border-color 0.25s, background 0.25s, color 0.25s, box-shadow 0.25s",
+            }}
+            title={listening 
+              ? (lang === "en" ? "Mute Microphone" : "মাইক্রোফোন বন্ধ করুন") 
+              : (lang === "en" ? "Activate Voice Mode" : "ভয়েস মোড চালু করুন")
+            }
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+            </svg>
+          </motion.button>
+        )}
+      </div>
 
       {open && (
         <div
@@ -1033,6 +1405,7 @@ export default function AIHelper() {
             </button>
             <button
               onClick={() => {
+                clearSpeakingQueue();
                 const seed: ChatMsg = {
                   role: "bot",
                   text:
@@ -1317,29 +1690,8 @@ export default function AIHelper() {
                 }}
               >
                 {m.role === "bot" && (
-                  <div
-                    style={{
-                      width: "32px",
-                      height: "32px",
-                      borderRadius: "50%",
-                      background: isDark ? "linear-gradient(135deg, #2ecc71 0%, #34c759 100%)" : "linear-gradient(135deg, #34c759 0%, #2ecc71 100%)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                      marginTop: "2px",
-                      overflow: "hidden"
-                    }}
-                  >
-                    <img 
-                      src="/ai-icon.png" 
-                      alt="AI Assistant"
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover"
-                      }}
-                    />
+                  <div style={{ flexShrink: 0, marginTop: "2px" }}>
+                    <AnimatedKoji state="idle" size={32} />
                   </div>
                 )}
                 <div

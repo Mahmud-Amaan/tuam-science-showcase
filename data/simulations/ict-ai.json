@@ -1,0 +1,11 @@
+{
+  "name": "Artificial Intelligence & ML",
+  "description": "An interactive machine learning visualizer showing neural network training and weight adjustments.",
+  "concepts": [
+    "Supervised Learning",
+    "Neural Network weights and biases",
+    "Activation functions",
+    "Loss minimization"
+  ],
+  "suggestedActivity": "Increase the number of hidden layers and retrain the network to see how it fits non-linear decision boundaries faster."
+}

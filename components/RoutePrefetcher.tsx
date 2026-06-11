@@ -21,6 +21,7 @@ export default function RoutePrefetcher() {
         "/biology",
         "/math",
         "/ict",
+        "/achievements",
       ]
 
       // Topic routes - medium priority

@@ -1,0 +1,14 @@
+{
+  "name": "pH Scale",
+  "description": "An interactive pH testing simulation where students can test various everyday liquids (coffee, milk, soap, battery acid) and measure their pH values.",
+  "concepts": [
+    "Acids and Bases",
+    "Hydronium concentration (H3O+)",
+    "pH = -log[H+]",
+    "Logarithmic scale"
+  ],
+  "formulas": [
+    "pH = -log10[H+]"
+  ],
+  "suggestedActivity": "Measure the pH of soap (basic) and compare it with orange juice (acidic). Add water to dilute them and observe how the pH moves closer to neutral 7."
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Plant Cell Anatomy",
+  "description": "An interactive 3D model of a plant cell showcasing chloroplasts, large vacuoles, and the rigid cell wall.",
+  "concepts": [
+    "Plant vs Animal cells",
+    "Cell Wall",
+    "Chloroplasts & Photosynthesis",
+    "Turgor pressure"
+  ],
+  "suggestedActivity": "Examine the Chloroplast and see how its double-membrane structure traps light to create chemical energy."
+}

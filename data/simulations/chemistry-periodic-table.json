@@ -1,0 +1,12 @@
+{
+  "name": "Interactive Periodic Table",
+  "description": "An interactive periodic table of elements showcasing element details, electronic configurations, and periodic trends.",
+  "concepts": [
+    "Groups & Periods",
+    "Atomic Radius",
+    "Electronegativity",
+    "Electron Configuration",
+    "Valence Electrons"
+  ],
+  "suggestedActivity": "Explore group 1 (Alkali Metals) to see how they all have exactly 1 valence electron and become highly reactive."
+}

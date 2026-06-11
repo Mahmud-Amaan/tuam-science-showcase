@@ -1,0 +1,15 @@
+{
+  "name": "Vectors & Magnitudes",
+  "description": "An interactive graph showing vectors. Students can adjust vector endpoints to see changes in components, magnitudes, and angles.",
+  "concepts": [
+    "Vector addition",
+    "Magnitude & Angle",
+    "X & Y Components",
+    "Pythagorean theorem in vectors"
+  ],
+  "formulas": [
+    "Magnitude = sqrt(x^2 + y^2)",
+    "Angle = atan2(y, x)"
+  ],
+  "suggestedActivity": "Drag a vector to (3, 4) and verify that its magnitude is exactly 5 using the Pythagorean theorem."
+}

@@ -1,36 +1,91 @@
-# ✅ Turbopack Build Fix Applied
+রাজনন্দিনী
+~১৮০ টা
+ছড়াছড়া Discount applied Rokomari
+বখতিয়ারের তিন ইয়ার
+~১৬৮ টা
+Discount প্রাইস Rokomari
+বিদ্রোহী জাতক
+~১৯৯ টা
+Discount প্রাইস Rokomari
+শের খান
+~১১০ টা
+Discount প্রাইস Rokomari
 
-## Issue
-Next.js 16 uses **Turbopack by default**, but our webpack config was causing conflicts.
 
-## Solution Applied
-Added `turbopack: {}` configuration to acknowledge Turbopack usage.
 
-## What Changed
-- **next.config.ts**: Added empty turbopack config
-- **webpack config**: Now only applies when using `--webpack` flag explicitly
-- **PWA config**: Removed invalid `swcMinify` option
 
-## Build Now
-```bash
-npm run build
-```
 
-Should work perfectly with Turbopack!
 
-## Why Turbopack?
-Turbopack is **faster** than webpack:
-- ⚡ **700x faster** updates
-- 🚀 **10x faster** cold starts
-- 📦 **Better code splitting** out of the box
-- 🎯 **No config needed** for most apps
 
-Our optimizations work great with Turbopack!
 
-## If You Prefer Webpack
-Use the webpack flag explicitly:
-```bash
-npm run build -- --webpack
-```
 
-But Turbopack is recommended for better performance.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+রোহিনী নদীর তীরে
+~৬৩ টা
+
+শাহজাদী
+~১২৫ টা
+
+আওয়ারা
+~২২৮ টা
+
+সূর্যাস্ত
+~২৪৫ টা
+
+রূপনগরের বন্দী
+~১১৯ টা
+
+দিঘলীতলার কান্না
+~১৪৪ টা
+
+দ্বীপান্তরের বৃত্তান্ত
+~১৮০ টা
+
+গুনাহগার
+~১১০ টা
+
+চলনবিলের পদাবলী
+~১৪০ টা
+
+চাঁদনী
+~১২৯ টা
+
+লাওয়ারিশ
+~১১৯ টা
+
+কবি ও প্রথম প্রেমের গল্প
+~১১২ টা
+
+
+
+
+
+
+
+নাটক: দেশপ্রেম
+~১০৫ টা
+
+বারো ভূঁইয়ার উপাখ্যান
+~১৪৪ টা
+
+

@@ -1,0 +1,16 @@
+{
+  "name": "Motion & Kinematics",
+  "description": "An interactive linear motion simulator where students can set displacement, initial velocity, and constant acceleration, then view real-time position/velocity graphs.",
+  "concepts": [
+    "Displacement (s)",
+    "Velocity (v)",
+    "Constant Acceleration (a)",
+    "Kinematics equations"
+  ],
+  "formulas": [
+    "v = u + at",
+    "s = ut + 0.5at^2",
+    "v^2 = u^2 + 2as"
+  ],
+  "suggestedActivity": "Set acceleration to 2 m/s² and watch how the velocity increases linearly while the displacement increases quadratically."
+}

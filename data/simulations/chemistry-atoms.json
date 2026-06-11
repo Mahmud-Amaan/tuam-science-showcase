@@ -1,0 +1,12 @@
+{
+  "name": "Atoms & Isotopes",
+  "description": "An interactive atom builder. Students can add protons, neutrons, and electrons to see how they form different elements, isotopes, and ions.",
+  "concepts": [
+    "Protons, Neutrons, Electrons",
+    "Atomic Number",
+    "Mass Number",
+    "Isotopes",
+    "Ions & Charges"
+  ],
+  "suggestedActivity": "Add 6 Protons, 6 Neutrons, and 6 Electrons to construct a stable Carbon-12 atom."
+}

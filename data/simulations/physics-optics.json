@@ -1,0 +1,15 @@
+{
+  "name": "Optics & Light",
+  "description": "A lens and light refraction simulator. Demonstrates how light rays bend when moving through different mediums (air, water, glass) and how lenses focus light.",
+  "concepts": [
+    "Refraction",
+    "Snell's Law",
+    "Focal point",
+    "Convex vs. Concave lenses",
+    "Refractive Index"
+  ],
+  "formulas": [
+    "n1 * sin(theta1) = n2 * sin(theta2)"
+  ],
+  "suggestedActivity": "Place a convex lens in the path of the light rays and adjust the focal length to see how the image flips or focuses."
+}

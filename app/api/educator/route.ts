@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import Fuse from "fuse.js";
+import fs from "fs";
+import path from "path";
 
 // Configure runtime (Node.js needed for streaming and Groq SDK)
 export const runtime = 'nodejs'
@@ -202,6 +204,45 @@ function extractContextFromPath(path: string) {
   return topicName || null;
 }
 
+function findSimulationGuide(contextPath: string) {
+  if (!contextPath) return null;
+  
+  try {
+    const cleanPath = contextPath.split('?')[0].replace(/^\/|\/$/g, "");
+    if (!cleanPath) return null;
+    
+    // 1. Direct match: e.g. physics/motion -> physics-motion.json
+    const fileName = cleanPath.replace(/\//g, "-") + ".json";
+    const directoryPath = path.join(process.cwd(), "data", "simulations");
+    const filePath = path.join(directoryPath, fileName);
+    
+    if (fs.existsSync(filePath)) {
+      const fileContent = fs.readFileSync(filePath, "utf-8");
+      return JSON.parse(fileContent);
+    }
+    
+    // 2. Fallback search (substring match on existing files)
+    if (fs.existsSync(directoryPath)) {
+      const files = fs.readdirSync(directoryPath);
+      const normalizedQuery = cleanPath.replace(/\//g, "-").toLowerCase();
+      
+      for (const file of files) {
+        if (!file.endsWith(".json")) continue;
+        const key = file.replace(/\.json$/, "").toLowerCase();
+        // If the query contains the key, or key contains the query
+        if (normalizedQuery.includes(key) || key.includes(normalizedQuery)) {
+          const fileContent = fs.readFileSync(path.join(directoryPath, file), "utf-8");
+          return JSON.parse(fileContent);
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Failed to read simulation guide file:", e);
+  }
+  
+  return null;
+}
+
 // --- Step 3: Call Groq AI ---
 async function callGroq(
   prompt: string, 
@@ -222,21 +263,20 @@ async function callGroq(
           "You are an expert bilingual (Bangla/English) science educator for students. Your goal is to help students learn by providing clear, engaging, and accurate explanations.\n\n" +
           "## Rules for Responses:\n" +
           "1. **Language**: Respond ONLY in the language the user is using. Never mix languages.\n" +
-          "2. **Clarity**: Break down complex ideas into simple, understandable parts.\n" +
-          "3. **Formatting**: Use Markdown to enhance readability:\n" +
+          "2. **Clarity & Socratic Method**: Break down complex ideas into simple, understandable parts. Start with an intuitive real-world analogy before introducing formal terminology. End explanations with a question that encourages the student to manipulate the simulation controls.\n" +
+          "3. **Interactive Quiz Mode**: If the user asks for a quiz or test, or triggers a quiz suggestion:\n" +
+          "   - Present exactly ONE multiple-choice question (with A, B, C, D options) relevant to the current page/topic.\n" +
+          "   - Do NOT give the answer right away. Wait for the user's response.\n" +
+          "   - Once the user responds, provide positive feedback, reveal the correct answer, and explain the science behind it.\n" +
+          "4. **Formatting**: Use Markdown to enhance readability:\n" +
           "   - **Bold** for key terms and concepts\n" +
           "   - Headings (##) for section titles\n" +
           "   - Bullet points (-) for lists\n" +
           "   - Numbered lists (1.) for sequences or steps\n" +
           "   - Code blocks (```) for formulas, code, and scientific notation\n" +
           "   - Short paragraphs (2-3 sentences max)\n" +
-          "4. **Examples**: Always include relevant examples and analogies to illustrate concepts.\n" +
-          "5. **Depth**: For simple questions, keep answers concise (3-5 sentences). For complex topics, provide detailed explanations (up to 10-15 sentences) when necessary.\n" +
-          "6. **Uncertainty**: If you don't know the answer, say so and suggest resources for learning more.\n" +
-          "7. **Reasoning**: Before answering, reason step-by-step to ensure accuracy. Think like a scientist!\n" +
-          "8. **Engagement**: Ask follow-up questions to encourage deeper thinking when appropriate.\n" +
-          "9. **Context**: Consider the current simulation context (if provided) and the conversation history to provide relevant answers.\n" +
-          (speakerMode ? "10. **Speaker Mode**: Reply in 1-2 complete sentence (40 words or fewer). No lists or points" : ""),
+          "5. **Simulation Guides**: If details about the active simulation are provided in the prompt, reference them directly. Tell the student how to use the simulation sliders, inputs, or buttons to observe the phenomena you are describing (e.g., 'Try increasing the slider to...').\n" +
+          "6. **Speaker Mode**: " + (speakerMode ? "Reply in 1-2 complete sentences (40 words or fewer). Do not use lists, headings, or bullet points." : "Keep responses concise and well-structured, but thorough.")
       },
       // Add conversation history
       ...history.map(msg => ({
@@ -283,6 +323,19 @@ export async function POST(req: Request) {
     const contextPath = body.contextPath || referer.split("/").slice(3).join("/") || "/";
     const simulationContext = extractContextFromPath(contextPath);
 
+    const guide = findSimulationGuide(contextPath);
+    let guideContext = "";
+    if (guide) {
+      guideContext = `
+[Active Simulation Details]
+Name: ${guide.name}
+Description: ${guide.description}
+Key Concepts to Teach: ${guide.concepts.join(", ")}
+${guide.formulas ? `Relevant Formulas: ${guide.formulas.join(", ")}` : ""}
+Suggested Hands-on Activity for student in simulation: ${guide.suggestedActivity}
+`;
+    }
+
     // Quick check for navigation intent
     const quickIntent = detectNavigationFuzzy(messageLower);
     if (quickIntent) {
@@ -308,7 +361,9 @@ export async function POST(req: Request) {
     const languageName = language === "bn" ? "Bangla (বাংলা)" : "English";
     const contextInfo = simulationContext ? `[Current Context: ${simulationContext}] ` : "";
     const prompt = `Language: ${languageName}
-${contextInfo}User Question: ${message}
+${contextInfo}
+${guideContext}
+User Question: ${message}
 
 Instructions:
 - Respond ONLY in ${languageName}
