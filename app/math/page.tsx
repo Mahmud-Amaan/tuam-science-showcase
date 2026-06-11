@@ -45,6 +45,38 @@ export default function MathPage() {
       icon: "🧮",
       route: "/math/arithmetic-practice",
     },
+    {
+      titleEn: "Desmos Calculator",
+      titleBn: "ডেসমস ক্যালকুলেটর",
+      descEn: "Powerful graphing calculator for functions and equations",
+      descBn: "ফাংশন এবং সমীকরণের জন্য শক্তিশালী গ্রাফিং ক্যালকুলেটর",
+      icon: "📊",
+      route: "/math/desmos-calculator",
+    },
+    {
+      titleEn: "Kids Math Games",
+      titleBn: "শিশুদের গণিত খেলা",
+      descEn: "Fun and educational math games for children",
+      descBn: "শিশুদের জন্য মজার এবং শিক্ষামূলক গণিত খেলা",
+      icon: "🎮",
+      route: "/math/kids-math-games",
+    },
+    {
+      titleEn: "Number Pairs",
+      titleBn: "সংখ্যা জোড়া",
+      descEn: "Explore number pairs and relationships with PhET simulation",
+      descBn: "PhET সিমুলেশন দিয়ে সংখ্যা জোড়া এবং সম্পর্ক অন্বেষণ করুন",
+      icon: "🔢",
+      route: "/math/number-pairs",
+    },
+    {
+      titleEn: "Calculus Applets",
+      titleBn: "ক্যালকুলাস অ্যাপলেটস",
+      descEn: "Interactive calculus visualizations with GeoGebra",
+      descBn: "GeoGebra দিয়ে ইন্টারঅ্যাক্টিভ ক্যালকুলাস ভিজ্যুয়ালাইজেশন",
+      icon: "📈",
+      route: "/math/calculus-applets",
+    },
   ]
 
   return (
