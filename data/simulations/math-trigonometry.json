@@ -1,0 +1,16 @@
+{
+  "name": "Trigonometry & Unit Circle",
+  "description": "An interactive unit circle simulator displaying sine, cosine, tangent values, and angles in radians/degrees.",
+  "concepts": [
+    "Unit Circle",
+    "Sine, Cosine, Tangent",
+    "Radians vs Degrees",
+    "Trigonometric ratios"
+  ],
+  "formulas": [
+    "sin(theta) = y / r",
+    "cos(theta) = x / r",
+    "tan(theta) = y / x"
+  ],
+  "suggestedActivity": "Set the angle to 30 degrees (pi/6 radians) and notice that sin(30°) is exactly 0.5."
+}

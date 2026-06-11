@@ -1,0 +1,10 @@
+{
+  "name": "Animal Cell Anatomy",
+  "description": "An interactive 3D model of an animal cell highlighting key organelles like Mitochondria, Nucleus, Ribosomes, and Cell Membrane.",
+  "concepts": [
+    "Eukaryotic Cell",
+    "Organelles & Functions",
+    "Cell Membrane structure"
+  ],
+  "suggestedActivity": "Click on the Mitochondria to learn why it is called the powerhouse of the cell."
+}

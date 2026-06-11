@@ -1,0 +1,11 @@
+{
+  "name": "Logic Gates Simulator",
+  "description": "An interactive digital circuit designer where students connect inputs, logic gates (AND, OR, NOT, XOR, NAND, NOR), and outputs.",
+  "concepts": [
+    "Boolean Logic",
+    "Truth Tables",
+    "AND, OR, NOT gate states",
+    "Binary inputs/outputs"
+  ],
+  "suggestedActivity": "Create a simple XOR gate circuit using AND, OR, and NOT gates, and test its truth table outputs."
+}

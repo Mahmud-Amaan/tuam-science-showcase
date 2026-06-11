@@ -41,25 +41,49 @@ export async function POST(req: NextRequest) {
         },
       });
     } else {
-      // Use Deepgram for English
+      // Use Deepgram for English with Google TTS fallback
       const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
-      if (!deepgramApiKey) {
-        throw new Error('DEEPGRAM_API_KEY is not configured');
+      if (deepgramApiKey) {
+        try {
+          const response = await fetch('https://api.deepgram.com/v1/speak?model=aura-zeus-en&encoding=mp3', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Token ${deepgramApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ text }),
+            signal: AbortSignal.timeout(5000), // Timeout after 5 seconds to fallback faster
+          });
+
+          if (response.ok) {
+            return new Response(response.body, {
+              headers: {
+                'Content-Type': 'audio/mpeg',
+              },
+            });
+          }
+          console.warn(`Deepgram TTS failed with status ${response.status}. Falling back to Google Translate TTS.`);
+        } catch (dgError) {
+          console.warn("Deepgram TTS network request failed. Falling back to Google Translate TTS.", dgError);
+        }
       }
 
-      const response = await fetch('https://api.deepgram.com/v1/speak?model=aura-zeus-en&encoding=mp3', {
-        method: 'POST',
+      // Fallback: Google Translate TTS for English
+      let cleanText = text;
+      if (cleanText.length > 200) {
+        cleanText = cleanText.substring(0, 197) + '...';
+      }
+      
+      const googleTtsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q=${encodeURIComponent(cleanText)}`;
+      
+      const response = await fetch(googleTtsUrl, {
         headers: {
-          'Authorization': `Token ${deepgramApiKey}`,
-          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         },
-        body: JSON.stringify({ text }),
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Deepgram TTS error: ${response.status}`, errorText);
-        throw new Error(`Deepgram TTS error: ${response.status} ${errorText}`);
+        throw new Error(`Google Translate TTS fallback responded with status ${response.status}`);
       }
 
       return new Response(response.body, {

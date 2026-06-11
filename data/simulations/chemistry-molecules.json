@@ -1,0 +1,11 @@
+{
+  "name": "Molecular Shapes",
+  "description": "A 3D molecule building and visualization simulator showing covalent bonds and spatial molecule geometries.",
+  "concepts": [
+    "Covalent Bonding",
+    "Valence Shell Electron Pair Repulsion (VSEPR) theory",
+    "Chemical Bonds",
+    "Molecular Geometry"
+  ],
+  "suggestedActivity": "Build a water molecule (H2O) and look at its bent shape, which is caused by the lone pairs pushing the hydrogen atoms down."
+}

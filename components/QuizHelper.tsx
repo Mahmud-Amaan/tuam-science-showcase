@@ -22,14 +22,14 @@ export default function QuizHelper() {
   const [questions, setQuestions] = useState<Question[]>([])
   const [userAnswers, setUserAnswers] = useState<Record<number, number>>({})
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
-  
+
   // Custom config states
   const [inputQuestions, setInputQuestions] = useState(10)
   const [inputTime, setInputTime] = useState(10) // minutes
   const [inputLang, setInputLang] = useState<"en" | "bn">("en")
   const [inputClass, setInputClass] = useState("10")
   const [timeRemaining, setTimeRemaining] = useState(600) // seconds
-  
+
   const [showConfig, setShowConfig] = useState(true)
   const [quizStarted, setQuizStarted] = useState(false)
   const [quizSubmitted, setQuizSubmitted] = useState(false)
@@ -211,8 +211,8 @@ export default function QuizHelper() {
           }}
           whileTap={{ scale: 0.92 }}
           style={{
-            width: "56px",
-            height: "56px",
+            width: "66px",
+            height: "66px",
             borderRadius: "50%",
             background: "linear-gradient(135deg, #6366f1 0%, #a855f7 100%)",
             border: "none",
@@ -759,15 +759,15 @@ export default function QuizHelper() {
                                     border: isSelected
                                       ? "2px solid #6366f1"
                                       : isDark
-                                      ? "1px solid rgba(255, 255, 255, 0.1)"
-                                      : "1px solid rgba(0, 0, 0, 0.08)",
+                                        ? "1px solid rgba(255, 255, 255, 0.1)"
+                                        : "1px solid rgba(0, 0, 0, 0.08)",
                                     background: isSelected
                                       ? isDark
                                         ? "rgba(99, 102, 241, 0.15)"
                                         : "rgba(99, 102, 241, 0.06)"
                                       : isDark
-                                      ? "#1e293b"
-                                      : "#ffffff",
+                                        ? "#1e293b"
+                                        : "#ffffff",
                                     color: isSelected ? (isDark ? "#ffffff" : "#4f46e5") : isDark ? "#cbd5e1" : "#334155",
                                     fontWeight: isSelected ? 700 : 500,
                                     fontSize: "16px",
@@ -899,8 +899,8 @@ export default function QuizHelper() {
                                   ? "Excellent! You have a solid grasp of this simulation's concepts."
                                   : "অসাধারণ! চলতি সিমুলেশনের ধারণার ওপর আপনার ভালো দখল তৈরি হয়েছে।"
                                 : lang === "en"
-                                ? "Keep practicing and testing parameters in the simulation to improve!"
-                                : "উন্নতির জন্য সিমুলেশনের স্লাইডারগুলো পরিবর্তন করে আবার অনুশীলন করুন!"}
+                                  ? "Keep practicing and testing parameters in the simulation to improve!"
+                                  : "উন্নতির জন্য সিমুলেশনের স্লাইডারগুলো পরিবর্তন করে আবার অনুশীলন করুন!"}
                             </p>
                           </div>
 
@@ -934,15 +934,15 @@ export default function QuizHelper() {
                                         ? "1px solid rgba(16, 185, 129, 0.2)"
                                         : "1px solid rgba(16, 185, 129, 0.3)"
                                       : isDark
-                                      ? "1px solid rgba(239, 68, 68, 0.2)"
-                                      : "1px solid rgba(239, 68, 68, 0.3)",
+                                        ? "1px solid rgba(239, 68, 68, 0.2)"
+                                        : "1px solid rgba(239, 68, 68, 0.3)",
                                     background: isCorrect
                                       ? isDark
                                         ? "rgba(16, 185, 129, 0.05)"
                                         : "rgba(16, 185, 129, 0.02)"
                                       : isDark
-                                      ? "rgba(239, 68, 68, 0.05)"
-                                      : "rgba(239, 68, 68, 0.02)"
+                                        ? "rgba(239, 68, 68, 0.05)"
+                                        : "rgba(239, 68, 68, 0.02)"
                                   }}
                                 >
                                   <p
@@ -970,20 +970,20 @@ export default function QuizHelper() {
                                             border: isCorrectOpt
                                               ? "1.5px solid #10b981"
                                               : wasSelected
-                                              ? "1.5px solid #ef4444"
-                                              : "1px dashed transparent",
+                                                ? "1.5px solid #ef4444"
+                                                : "1px dashed transparent",
                                             background: isCorrectOpt
                                               ? "rgba(16, 185, 129, 0.1)"
                                               : wasSelected
-                                              ? "rgba(239, 68, 68, 0.1)"
-                                              : "transparent",
+                                                ? "rgba(239, 68, 68, 0.1)"
+                                                : "transparent",
                                             color: isCorrectOpt
                                               ? (isDark ? "#34d399" : "#065f46")
                                               : wasSelected
-                                              ? (isDark ? "#fca5a5" : "#991b1b")
-                                              : isDark
-                                              ? "#94a3b8"
-                                              : "#475569",
+                                                ? (isDark ? "#fca5a5" : "#991b1b")
+                                                : isDark
+                                                  ? "#94a3b8"
+                                                  : "#475569",
                                             display: "flex",
                                             justifyContent: "space-between",
                                             alignItems: "center"

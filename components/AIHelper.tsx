@@ -314,26 +314,25 @@ export default function AIHelper() {
 
   // Sync bubble text and visibility based on thinking, streaming, and sentence playback queue
   useEffect(() => {
+    const lastMsg = messages[messages.length - 1];
+
+    // 1. If currently generating response (isThinking is true):
     if (isThinking) {
-      setBubbleText(lang === "en" ? "Thinking..." : "চিন্তা করছি...");
+      if (lastMsg && lastMsg.role === "bot" && lastMsg.text.trim() !== "") {
+        const cleanText = markdownToSpeech(lastMsg.text);
+        const chunks = splitIntoShortChunks(cleanText);
+        const latestChunk = chunks[chunks.length - 1] || "";
+        setBubbleText(latestChunk);
+      } else {
+        setBubbleText(lang === "en" ? "Thinking..." : "চিন্তা করছি...");
+      }
       setShowBubble(true);
       return;
     }
 
-    // 1. If currently playing through the sentence queue:
+    // 2. If currently playing through the sentence queue:
     if (currentSentenceIndex >= 0 && currentSentenceIndex < sentencesArray.length) {
       setBubbleText(sentencesArray[currentSentenceIndex]);
-      setShowBubble(true);
-      return;
-    }
-
-    // 2. If streaming is active (last message is bot and we haven't started playing sentences yet):
-    const lastMsg = messages[messages.length - 1];
-    if (lastMsg && lastMsg.role === "bot" && lastMsg.text !== "" && currentSentenceIndex === -1) {
-      const cleanText = markdownToSpeech(lastMsg.text);
-      const chunks = splitIntoShortChunks(cleanText);
-      const latestChunk = chunks[chunks.length - 1] || "";
-      setBubbleText(latestChunk);
       setShowBubble(true);
       return;
     }

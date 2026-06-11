@@ -1,0 +1,11 @@
+{
+  "name": "Programming Playground",
+  "description": "An interactive environment demonstrating programming syntax, loops, conditions, and debugging steps.",
+  "concepts": [
+    "Variables & Types",
+    "Conditional logic",
+    "Loops (for, while)",
+    "Function definitions"
+  ],
+  "suggestedActivity": "Write a simple loop that counts from 1 to 10 and prints the values, watching how variables change on each iteration."
+}

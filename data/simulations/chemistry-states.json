@@ -1,0 +1,11 @@
+{
+  "name": "States of Matter",
+  "description": "A molecular-level simulation showing molecules of Neon, Argon, Oxygen, and Water in Solid, Liquid, and Gas phases as temperature changes.",
+  "concepts": [
+    "Solids, Liquids, Gases",
+    "Phase transitions (Melting, Vaporization)",
+    "Thermal energy",
+    "Intermolecular forces"
+  ],
+  "suggestedActivity": "Select Water, heat it up to 100°C (373 K) and watch how the hydrogen bonds break as it transitions into a gas."
+}

@@ -1,0 +1,14 @@
+{
+  "name": "Solar System",
+  "description": "A 3D solar system orbital simulator. Simulates planetary motion, Kepler's laws of planetary motion, and gravitational pull of the Sun.",
+  "concepts": [
+    "Orbits",
+    "Kepler's Laws",
+    "Centripetal Force",
+    "Orbital Velocity"
+  ],
+  "formulas": [
+    "v = sqrt(G * M / r)"
+  ],
+  "suggestedActivity": "Compare the orbital speeds of inner planets (like Mercury) with outer planets (like Neptune) to see how speed decreases with distance."
+}

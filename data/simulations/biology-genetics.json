@@ -1,0 +1,11 @@
+{
+  "name": "Genetics & Punnett Squares",
+  "description": "A genetics simulation exploring Punnett squares, dominant vs recessive traits, and phenotype ratios.",
+  "concepts": [
+    "Alleles",
+    "Genotype vs Phenotype",
+    "Dominant & Recessive inheritance",
+    "Homozygous vs Heterozygous"
+  ],
+  "suggestedActivity": "Cross a homozygous dominant tall plant (TT) with a homozygous recessive short plant (tt) and observe the offspring phenotypes."
+}

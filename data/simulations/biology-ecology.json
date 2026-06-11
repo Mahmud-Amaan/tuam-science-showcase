@@ -1,0 +1,11 @@
+{
+  "name": "Ecology & Ecosystems",
+  "description": "A simulation of ecological balance, food webs, and environmental carrying capacity.",
+  "concepts": [
+    "Food Chains & Webs",
+    "Producers vs Consumers",
+    "Ecosystem balance",
+    "Carrying capacity"
+  ],
+  "suggestedActivity": "Increase the population of primary consumers (rabbits) and notice how it temporarily depletes the grass before causing a consumer crash."
+}

@@ -1,0 +1,14 @@
+{
+  "name": "Gravity",
+  "description": "An interactive gravitational attraction simulator. Students can change the masses of two objects and the distance between them to see how it affects the gravitational force.",
+  "concepts": [
+    "Newton's Law of Universal Gravitation",
+    "Gravitational constant (G)",
+    "Mass vs. Weight",
+    "Inverse-square relationship"
+  ],
+  "formulas": [
+    "F = G * (m1 * m2) / r^2"
+  ],
+  "suggestedActivity": "Try doubling the mass of one object and notice how the force doubles. Then double the distance between them and see how the force drops to one-fourth."
+}
